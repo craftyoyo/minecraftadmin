@@ -9,8 +9,10 @@ from time import strftime, time
 import datetime
 import math
 import os
+import string
 
 SERVER = "./minecraft_server.jar"
+ADMINS = ['Flippeh']
 MAXPLAYER = 10
 VOTEKICK_THRESHOLD = 80 # = 80%
 
@@ -33,6 +35,7 @@ else:
 
 votekicks = dict({})
 players = dict({})
+motd = "Welcome! Type \"!help\" to see the available commands."
 
 # Proudly scraped off http://copy.bplaced.net/mc/ids.php
 blocks = dict({
@@ -83,7 +86,7 @@ blocks = dict({
 # To add multiple admins, you can separate them with a pipe:
 # admin = re.compile('Flippeh|Somedude|Anotherdude')
 
-admin = re.compile('Flippeh', re.IGNORECASE)
+admin = re.compile(string.join(ADMINS, "|"), re.IGNORECASE)
 
 chatmessage = re.compile('^\d.+ \d.+ .INFO. <(.+?)> (.+)$')
 
@@ -167,6 +170,31 @@ try:
                else:
                   stdin.write("say You're no admin, %s!\n" % (nick))
 
+            elif parts[0] == "!giveall":
+                if (admin.match(nick)):
+                    try:
+                        item = parts[2]
+                        amount = parts[1]
+
+                        if not amount.isdigit():
+                            server.stdin.write("say Amount must be a number!\n")
+                            continue
+
+                        if not item.isdigit():
+                            try:
+                                item = blocks[item]
+                            except KeyError:
+                                server.stdin.write("say No such ID\n")
+                                continue
+
+                        for target in players:
+                            for i in range(int(amount)):
+                                server.stdin.write("give %s %s\n" % (target, item))
+                    except IndexError:
+                        server.stdin.write("say Syntax: !giveall <amount> <what>\n")
+                else:
+                    server.stdin.write("say You're no admin, %s!\n" % (nick))
+			   	     	
             elif parts[0] == "!lite":
                if (admin.match(nick)):
                   try:
@@ -304,6 +332,17 @@ try:
                except IndexError:
                   stdin.write("say Syntax: !votekick <player>\n")
                   continue
+            elif parts[0] == "!motd":
+                if (len(parts) == 1):
+                    stdin.write("say MOTD: %s\n" % motd)
+                elif (admin.match(nick)):
+                    try:
+                        motd = string.join(parts[1:], " ")
+                        stdin.write("say MOTD: %s\n" % motd)
+                    except IndexError:
+                        stdin.write("say Syntax: !motd <message>\n")
+                else:
+                    stdin.write("say You're no admin, %s!\n" % (nick))
 
             elif parts[0] == "!help":
                stdin.write("say !time - Get current server time\n")
@@ -319,6 +358,8 @@ try:
                   stdin.write("say !unban <nick> - Unban someone\n")
                   stdin.write("say !lite <nick> - Make someone a lite admin\n")
                   stdin.write("say !unlite <nick> - Remove lite admin status\n")
+                  stdin.write("say !motd <message> - set the MOTD\n")
+                  stdin.write("say !motd - display the MOTD\n")
                
             elif parts[0] == "!uptime":
                uptime = int(time()) - started
@@ -377,7 +418,9 @@ try:
                   stdin.write("kick %s\n" % (last_joined))
                else:
                   players[last_joined] = int(time())
- 
+                  if motd != "":
+                     stdin.write("say MOTD: %s\n" % motd)
+                     continue
                continue
 
             # Someone left

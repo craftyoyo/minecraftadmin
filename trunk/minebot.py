@@ -9,7 +9,7 @@ from time import strftime, time
 import datetime
 import math
 
-SERVER = "/home/lukas/minecraft_server.jar"
+SERVER = "./minecraft_server.jar"
 MAXPLAYER = 10
 VOTEKICK_THRESHOLD = 80 # = 80%
 

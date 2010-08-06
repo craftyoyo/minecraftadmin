@@ -383,12 +383,12 @@ try:
             # Someone left
             ply_quit = srv_part.search(line)
             if ply_quit:
-               try:
-                  nick = ply_quit.group(1).lower()
-                  votekicks.pop(nick)
+               nick = ply_quit.group(1).lower()
+               if nick in players:
                   players.pop(nick)
-               except KeyError: 
-                  pass # Ignore it
+
+               if nick in votekicks:
+                  votekicks.pop(nick)
          
    print "[SRVBOT] Server shut down"
 

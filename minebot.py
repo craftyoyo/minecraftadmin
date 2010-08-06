@@ -11,15 +11,21 @@ import math
 import os
 import string
 
+## CONFIGURATION START ##
 SERVER = "./minecraft_server.jar"
 ADMINS = ['Flippeh']
+HEAPMEM_MAX = "1024M"
+HEAPMEM_MIN = "1024M"
 MAXPLAYER = 10
 VOTEKICK_THRESHOLD = 80 # = 80%
+## CONFIGURATION END ##
+# modify if you know what you're doing, better not otherwise :)
 
 print "[SRVBOT] Starting..."
 print "[SRVBOT]    Running the server executable..."
 
-server_args = ["java", "-Xmx1024M", "-Xms1024M", "-jar", SERVER, "nogui"]
+server_args = ["java", "-Xmx%s" % (HEAPMEM_MAX), "-Xms%s" % (HEAPMEM_MIN), 
+               "-jar", SERVER, "nogui"]
 
 if os.name == "nt":
    import win32pipe

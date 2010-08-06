@@ -101,7 +101,6 @@ try:
       
    ban_list = map(lambda x: x.rstrip(), bans.readlines()) # more magic!
    bans.close()
-   
 
    while True:
       try:
@@ -353,7 +352,7 @@ try:
  
                if current_players > MAXPLAYER and not admin.match(last_joined):
                   server.stdin.write("say Maximum player limit has been reached\n")
-                  server.stdin.write("kick %s\n" % last_joined)
+                  server.stdin.write("kick %s\n" % (last_joined))
             
                continue
  
@@ -363,7 +362,7 @@ try:
                last_joined = ply_join.group(1).lower()
  
                if last_joined in ban_list:
-                  server.stdin.write("kick %s\n" % last_joined)
+                  server.stdin.write("kick %s\n" % (last_joined))
                else:
                   players[last_joined] = int(time())
  

@@ -377,9 +377,6 @@ try:
                   players.pop(nick)
                except KeyError: 
                   pass # Ignore it
-
-               print players
-               print votekicks
          
    print "[SRVBOT] Server shut down"
 

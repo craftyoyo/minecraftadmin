@@ -150,15 +150,11 @@ try:
                else:
                   server.stdin.write("say You're no admin, %s!\n" % (nick))
 
-               continue
-
             elif parts[0] == "!stop":
                if (admin.match(nick)):
                   server.stdin.write("stop\n")
                else:
                   server.stdin.write("say You're no admin, %s!\n" % (nick))
-
-               continue
 
             elif parts[0] == "!lite":
                if (admin.match(nick)):
@@ -172,8 +168,8 @@ try:
                         server.stdin.write("say Player already is an admin\n")
                   except IndexError:
                      server.stdin.write("say Syntax: !lite <player>\n")
-
-                  continue
+               else:
+                  server.stdin.write("say You're no admin, %s!\n" % (nick))
 
             elif parts[0] == "!unlite":
                if (admin.match(nick)):
@@ -187,6 +183,8 @@ try:
                         server.stdin.write("say No such admin\n")
                   except IndexError:
                      server.stdin.write("say Syntax: !unlite <player>\n")
+               else:
+                  server.stdin.write("say You're no admin, %s!\n" % (nick))
 
             elif parts[0] == "!kick":
                if (admin.match(nick) or nick in temp_admins):
@@ -195,11 +193,8 @@ try:
                      server.stdin.write("kick %s\n" % (target))
                   except IndexError:
                      server.stdin.write("say Syntax: !kick <player>\n")
-                     continue
                else:
                   server.stdin.write("say You're no admin, %s!\n" % (nick))
-
-               continue
 
             elif parts[0] == "!ban":
                if (admin.match(nick) or nick.lower() in temp_admins):
@@ -230,8 +225,6 @@ try:
                else:
                   server.stdin.write("say You're no admin, %s!\n" % (nick))
             
-               continue
-
             elif parts[0] == "!unban":
                if (admin.match(nick) or nick.lower() in temp_admins):
 
@@ -262,16 +255,12 @@ try:
                else:
                   server.stdin.write("say You're no admin, %s!\n" % (nick))
 
-               continue
-
             elif parts[0] == "!who":
                server.stdin.write("list\n")
-               continue
 
             elif parts[0] == "!time":
                time = strftime("%H:%M:%S (%Z)")
                server.stdin.write("say The current server time is: %s\n" % (time))
-               continue
 
             elif parts[0] == "!votekick":
                voter  = nick

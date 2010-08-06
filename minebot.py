@@ -337,6 +337,10 @@ try:
                      elif i.lower() in temp_admins:
                         server.stdin.write("say - %s (Lite Admin) [%s]\n" 
                               % (i, connected))
+                     else:
+                        server.stdin.write("say - %s [%s]\n"
+                              % (i, connected))
+
                   except KeyError:
                      print "[SRVBOT] Unlisted user: %s" % (i)
  

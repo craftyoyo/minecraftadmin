@@ -194,23 +194,23 @@ try:
                         amount = parts[1]
 
                         if not amount.isdigit():
-                            server.stdin.write("say Amount must be a number!\n")
+                            stdin.write("say Amount must be a number!\n")
                             continue
 
                         if not item.isdigit():
                             try:
                                 item = blocks[item]
                             except KeyError:
-                                server.stdin.write("say No such ID\n")
+                                stdin.write("say No such ID\n")
                                 continue
 
                         for target in players:
                             for i in range(int(amount)):
-                                server.stdin.write("give %s %s\n" % (target, item))
+                                stdin.write("give %s %s\n" % (target, item))
                     except IndexError:
-                        server.stdin.write("say Syntax: !giveall <amount> <what>\n")
+                        stdin.write("say Syntax: !giveall <amount> <what>\n")
                 else:
-                    server.stdin.write("say You're no admin, %s!\n" % (nick))
+                    stdin.write("say You're no admin, %s!\n" % (nick))
 			   	     	
             elif parts[0] == "!lite":
                if (admin.match(nick)):

@@ -10,22 +10,76 @@ import datetime
 import math
 import os
 import string
-
-## CONFIGURATION START ##
-SERVER             = "./minecraft_server.jar"
-ADMINS             = ['Flippeh']
-HEAPMEM_MAX        = "1024M"
-HEAPMEM_MIN        = "1024M"
-MAXPLAYER          = 10
-VOTEKICK_THRESHOLD = 80 # = 80%
-PASSWORD           = None # or "yourpass"
-PASSTIME           = 15 # seconds
-## CONFIGURATION END ##
-# modify if you know what you're doing, better not otherwise :)
+import ConfigParser
+from StringIO import StringIO
 
 print "[SRVBOT] Starting..."
-print "[SRVBOT] Running the server executable..."
 
+## default config ##
+default_config = """
+[general]
+server = ./minecraft_server.jar
+admins =
+lite_admins =
+motd = Welcome $nick!|Type "!help" to see the available commands.|Type "!who" to see who is playing right now.
+max_players = 10
+votekick_threshold = 80
+password =
+password_timeout = 15
+[java]
+heapmem_max = 1024M
+heapmem_min = 1024M
+"""
+
+print "[SRVBOT] Loading default config..."
+try:
+   config = ConfigParser.ConfigParser()
+   config.readfp(StringIO(default_config))
+except:
+   print "[SRVBOT] Failed to load default config, exiting..."
+   exit()
+
+## load custom config ##
+print "[SRVBOT] Checking custom config..."
+if os.path.isfile('minebot.ini'):
+   print "[SRVBOT] Custom config found, loading..."
+   try:
+      config.read('minebot.ini')
+   except:
+      print "[SRVBOT] Error loading custom config, exiting..."
+      exit()
+else:
+   print "[SRVBOT] Writing new config file..."
+   try:
+      config_file = open('minebot.ini', 'w')
+      config.write(config_file)
+      config_file.close()
+   except:
+      print "[SRVBOT] Failed to write new config file, continuing..."
+
+print "[SRVBOT] Setting config..."
+try:
+   SERVER             = config.get('general', 'server')
+   ADMINS             = config.get('general', 'admins').split(' ')
+   if ADMINS[0] == '':
+      del(ADMINS[0])
+   temp_admins        = config.get('general', 'lite_admins').split(' ')
+   if temp_admins[0] == '':
+      del(temp_admins[0])
+   HEAPMEM_MAX        = config.get('java', 'heapmem_max')
+   HEAPMEM_MIN        = config.get('java', 'heapmem_min')
+   MAXPLAYER          = config.getint('general', 'max_players')
+   VOTEKICK_THRESHOLD = config.getint('general', 'votekick_threshold')
+   PASSWORD           = config.get('general', 'password')
+   if PASSWORD == '':
+      PASSWORD = None
+   PASSTIME           = config.getint('general', 'password_timeout')
+   motd               = config.get('general', 'motd').split('|')
+except:
+   print "[SRVBOT] Failed setting configuration, exiting..."
+   exit()
+
+print "[SRVBOT] Running the server executable..."
 server_args = ["java", "-Xmx%s" % (HEAPMEM_MAX), "-Xms%s" % (HEAPMEM_MIN), 
                "-jar", SERVER, "nogui"]
 
@@ -87,7 +141,7 @@ blocks = dict({
 # To add multiple admins, you can separate them with a pipe:
 # admin = re.compile('Flippeh|Somedude|Anotherdude')
 
-admin = re.compile(string.join(ADMINS, "|"), re.IGNORECASE)
+admin = re.compile("^(%s)$" % string.join(ADMINS, "|"), re.IGNORECASE)
 
 chatmessage = re.compile('^\d.+ \d.+ .INFO. <(.+?)> (.+)$')
 
@@ -101,12 +155,6 @@ try:
    started         = int(time())
    votekicks       = dict({})
    players         = dict({})
-
-   motd            = ["Welcome $nick!", 
-         "Type \"!help\" to see the available commands.",
-         "Type \"!who\" to see who is playing right now."]
-
-   temp_admins     = []
 
    if os.path.exists("server.bans"):
       try:
@@ -129,7 +177,7 @@ try:
          bans.close()
 
       ban_list = []
-
+   
    # main loop
    while True:
       try:
@@ -235,6 +283,13 @@ try:
    
                         if not target.lower() in temp_admins:
                            temp_admins.append(target.lower())
+                           try:
+                              config.set('general', 'lite_admins', string.join(temp_admins, ' '))
+                              config_file = open('minebot.ini', 'w')
+                              config.write(config_file)
+                              config_file.close()
+                           except:
+                              print "[SRVBOT] Failed to write config file on %s..." % parts[0]
                            stdin.write("say Made %s lite admin\n" % (target))
                         else:
                            stdin.write("say Player already is an admin\n")
@@ -250,6 +305,13 @@ try:
    
                         if target.lower() in temp_admins:
                            temp_admins.remove(target.lower())
+                           try:
+                              config.set('general', 'lite_admins', string.join(temp_admins, ' '))
+                              config_file = open('minebot.ini', 'w')
+                              config.write(config_file)
+                              config_file.close()
+                           except:
+                              print "[SRVBOT] Failed to write config file on %s..." % parts[0]
                            stdin.write("say Removed %s's admin\n" % (target))
                         else:
                            stdin.write("say No such admin\n")
@@ -372,7 +434,13 @@ try:
                   elif (admin.match(nick)):
                      try:
                         motd = string.join(parts[1:], " ").split("|")
-   
+                        try:
+                           config.set('general', 'motd', string.join(motd, '|'))
+                           config_file = open('minebot.ini', 'w')
+                           config.write(config_file)
+                           config_file.close()
+                        except:
+                           print "[SRVBOT] Failed to write config file on %s..." % parts[0]
                         for line in motd:
                            stdin.write("say MOTD: %s\n" % line)
                      except IndexError:

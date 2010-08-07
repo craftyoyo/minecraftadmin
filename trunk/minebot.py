@@ -63,6 +63,9 @@ try:
    ADMINS             = config.get('general', 'admins').split(' ')
    if ADMINS[0] == '':
       del(ADMINS[0])
+
+   map(lambda admin: admin.lower(), ADMINS)
+
    temp_admins        = config.get('general', 'lite_admins').split(' ')
    if temp_admins[0] == '':
       del(temp_admins[0])

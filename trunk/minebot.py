@@ -12,17 +12,17 @@ import os
 import string
 
 ## CONFIGURATION START ##
-SERVER = "./minecraft_server.jar"
-ADMINS = ['Flippeh']
-HEAPMEM_MAX = "1024M"
-HEAPMEM_MIN = "1024M"
-MAXPLAYER = 10
+SERVER             = "./minecraft_server.jar"
+ADMINS             = ['Flippeh']
+HEAPMEM_MAX        = "1024M"
+HEAPMEM_MIN        = "1024M"
+MAXPLAYER          = 10
 VOTEKICK_THRESHOLD = 80 # = 80%
 ## CONFIGURATION END ##
 # modify if you know what you're doing, better not otherwise :)
 
 print "[SRVBOT] Starting..."
-print "[SRVBOT]    Running the server executable..."
+print "[SRVBOT] Running the server executable..."
 
 server_args = ["java", "-Xmx%s" % (HEAPMEM_MAX), "-Xms%s" % (HEAPMEM_MIN), 
                "-jar", SERVER, "nogui"]
@@ -38,10 +38,6 @@ else:
                   stderr = PIPE)
    outputs = [server.stderr, server.stdout]
    stdin = server.stdin
-
-votekicks = dict({})
-players = dict({})
-motd = "Welcome! Type \"!help\" to see the available commands."
 
 # Proudly scraped off http://copy.bplaced.net/mc/ids.php
 blocks = dict({
@@ -102,24 +98,39 @@ srv_join          = re.compile('^\d.+ \d.+ .INFO. (.+?) \[.+?\] logged in')
 srv_part          = re.compile('^\d.+ \d.+ .INFO. (.+?) lost connection')
 
 try:
-   outready = 0
-   last_joined = ""
    current_players = 0
-   started = int(time())
+   started         = int(time())
+   votekicks       = dict({})
+   players         = dict({})
+
+   motd            = ["Welcome $nick!", 
+                      "Type \"!help\" to see the available commands."]
    
-   temp_admins = []
-   bans = None
+   temp_admins     = []
+   
+   if os.path.exists("server.bans"):
+      try:
+         bans = open("server.bans", 'r')
+         ban_list = map(lambda x: x.rstrip(), bans.readlines()) # more magic!
 
-   try:
-      bans = open('server.bans', 'r+')
-   except:
-      bans = open('server.bans', 'w')  # File will be created
-      bans.close()                     # Now reopen in read-write mode!
-      bans = open('server.bans', 'r+') # magic!
-      
-   ban_list = map(lambda x: x.rstrip(), bans.readlines()) # more magic!
-   bans.close()
+      except:
+         print "[SRVBOT] Error while loading bans! Gotta continue with them"
+      finally:
+         bans.close()
 
+   else:
+      try:
+         print "[SRVBOT] No ban file, creating it..."
+         bans = open("server.bans", 'w')
+
+      except:
+         print "[SRVBOT] Error creating 'server.bans'"
+      finally:
+         bans.close()
+
+      ban_list = []
+
+   # main loop
    while True:
       try:
          if os.name == 'nt':
@@ -277,7 +288,7 @@ try:
                      target = parts[1].lower()
 
                      if target in ban_list:
-                        ban_list.remove()
+                        ban_list.remove(target)
 
                         try:
                            bans = open('server.bans', 'w')
@@ -325,30 +336,33 @@ try:
                   except KeyError:
                      votekicks[target] = [voter]
 
-                  perc = float(len(votekicks[target])) * 100
+                  perc = float(len(votekicks[target])) * 100 / current_players
             
-                  if perc / current_players >= VOTEKICK_THRESHOLD:
+                  stdin.write("say Voting to kick %s: %.2f%% / %.2f%%\n" 
+                        % (target, perc, VOTEKICK_THRESHOLD))
+
+                  if perc >= VOTEKICK_THRESHOLD:
                      stdin.write("say Vote passed!\n")
                      stdin.write("kick %s\n" % (target))
 
                      votekicks.pop(target)
-                  else:
-                     stdin.write("say Voting to kick %s: %.2f%% / %.2f%%\n" 
-                           % (target, perc, VOTEKICK_THRESHOLD))
                except IndexError:
                   stdin.write("say Syntax: !votekick <player>\n")
-                  continue
+
             elif parts[0] == "!motd":
-                if (len(parts) == 1):
-                    stdin.write("say MOTD: %s\n" % motd)
-                elif (admin.match(nick)):
-                    try:
-                        motd = string.join(parts[1:], " ")
-                        stdin.write("say MOTD: %s\n" % motd)
-                    except IndexError:
+               if (len(parts) == 1):
+                  for line in motd:
+                     stdin.write("say MOTD: %s\n" % line.replace("$nick", nick))
+               elif (admin.match(nick)):
+                  try:
+                     motd = string.join(parts[1:], " ").split("|")
+
+                     for line in motd:
+                        stdin.write("say MOTD: %s\n" % line)
+                  except IndexError:
                         stdin.write("say Syntax: !motd <message>\n")
-                else:
-                    stdin.write("say You're no admin, %s!\n" % (nick))
+               else:
+                  stdin.write("say You're no admin, %s!\n" % nick)
 
             elif parts[0] == "!help":
                stdin.write("say !time - Get current server time\n")
@@ -418,15 +432,17 @@ try:
             # Someone joined
             ply_join = srv_join.search(line)
             if ply_join:
-               last_joined = ply_join.group(1).lower()
+               nick = ply_join.group(1)
+               last_joined = nick.lower()
  
                if last_joined in ban_list:
                   stdin.write("kick %s\n" % (last_joined))
                else:
                   players[last_joined] = int(time())
-                  if motd != "":
-                     stdin.write("say MOTD: %s\n" % motd)
-                     continue
+
+                  for line in motd:
+                     stdin.write("say MOTD: %s\n" % line.replace("$nick", nick))
+  
                continue
 
             # Someone left

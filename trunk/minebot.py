@@ -182,7 +182,7 @@ try:
                   stdin.write("say You're no admin, %s!\n" % (nick))
 
             elif parts[0] == "!stop":
-               if (admin.match(nick)):
+               if (admin.match(nick) or nick.lower() in temp_admins):
                   stdin.write("stop\n")
                else:
                   stdin.write("say You're no admin, %s!\n" % (nick))

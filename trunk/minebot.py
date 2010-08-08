@@ -306,14 +306,17 @@ try:
                if parts[0] == '!give':
                   if (admin.match(nick) or nick.lower() in temp_admins):
                      try:
-                        item = parts[3]
+                        items = string.join(parts[3:],'').replace(' ','').split(',')
                         amount = parts[2]
-                        target = parts[1]
+                        targets= parts[1].split(',')
 
-                        try:
-                           give(target, item, amount)
-                        except Mineception, me:
-                           say(me.errmsg)
+                        for item in items:
+                           try:
+                              for target in targets:
+                                 give(target, item, amount)
+                           except Mineception, me:
+                              say(me.errmsg)
+
                            
                      except IndexError:
                         say('Syntax: !give <player> <amount> <what>')
@@ -329,14 +332,14 @@ try:
                elif parts[0] == '!giveall':
                   if (admin.match(nick) or nick.lower() in temp_admins):
                      try:
-                        item = parts[2]
+                        items = string.join(parts[2:],'').replace(' ','').split(',')
                         amount = parts[1]
-
-                        try:
-                           for target in players:
-                             give(target, item, amount)
-                        except Mineception, me:
-                           say(me.errmsg)
+                        for item in items:
+                           try:
+                              for target in players:
+                                give(target, item, amount)
+                           except Mineception, me:
+                              say(me.errmsg)
 
                      except IndexError:
                        say('Syntax: !giveall <amount> <what>')

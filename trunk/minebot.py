@@ -586,6 +586,7 @@ try:
                   say('!who  - Show who\'s playing and how long')
                   say('!votekick <nick> Vote to kick someone')
                   say('!uptime - Show server uptime')
+                  say('!motd - display the MOTD')
 
                   if admin.match(nick):
                      say('!give <nick> <amount> <Item ID | Name> - Give someone an item')
@@ -596,7 +597,9 @@ try:
                      say('!lite <nick> - Make someone a lite admin')
                      say('!unlite <nick> - Remove lite admin status')
                      say('!motd <message> - set the MOTD')
-                     say('!motd - display the MOTD')
+                     say('!white <nick> - Add someone to the whitelist')
+                     say('!unwhite <nick> - Remove someone from the whitelist')
+
    
                elif parts[0] == '!uptime':
                   uptime = int(time()) - started

@@ -73,8 +73,8 @@ def savebans():
          bans.write('%s\n' % nick)
    except:
       raise Mineception('File I/O Error writing server.bans')
-   finally:
-      bans.close()
+   
+   'bans' in locals() and bans.close()
 
 
 def give(player, item, amount):
@@ -248,8 +248,9 @@ try:
 
       except:
          logmsg('Error while loading bans! Gotta continue with them')
-      finally:
-         bans.close()
+         ban_list = []
+      
+      'bans' in locals() and bans.close()
 
    else:
       try:
@@ -258,8 +259,8 @@ try:
 
       except:
          logmsg('Error creating \'server.bans\'')
-      finally:
-         bans.close()
+      
+      'bans' in locals() and bans.close()
 
       ban_list = []
    
@@ -418,7 +419,7 @@ try:
                               say('Added \'%s\' to whitelist' % target)
                            except: 
                               say('Could not save user on the whitelist!')
-                           finally:
+                           
                               config_file.close()
                         else:
                            say('User already on whitelist!')
@@ -441,7 +442,7 @@ try:
                               say('Removed \'%s\' from whitelist' % target)
                            except:
                               say('Could not save the whitelist')
-                           finally:
+                           
                               config_file.close()
                         else:
                            say('User not on whitelist')

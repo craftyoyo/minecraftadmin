@@ -13,7 +13,44 @@ import string
 import ConfigParser
 from StringIO import StringIO
 
-print "[SRVBOT] Starting..."
+
+class Mineception(Exception): #TODO: Come up with something better!
+   def __init__(self, value):
+      self.errmsg = value
+
+   def __str__(self):
+      print self.errmsg
+
+
+def say(message):
+   stdin.write('say %s\n' % message)
+
+def kick(user):
+   stdin.write('kick %s\n' % user)
+
+def give(player, item, amount):
+   if not amount.isdigit():
+      raise Mineception('Amount must be a number')
+   
+   amountint = int(amount)
+
+   if not item.isdigit():
+      try: 
+         item = blocks[item]
+      except KeyError:
+         raise Mineception('Unknown Item-ID: \'%s\'' % item)
+
+   for i in range(amountint):
+      stdin.write('give %s %s\n' % (player, item))
+
+def logmsg(msg):
+   print "[SRVBOT] %s" % msg
+
+def logsrv(msg):
+   print "[SERVER] %s" %msg
+
+
+logmsg('Starting...')
 
 ## default config ##
 default_config = """
@@ -31,33 +68,34 @@ heapmem_max = 1024M
 heapmem_min = 1024M
 """
 
-print "[SRVBOT] Loading default config..."
+logmsg('Loading default config...')
 try:
    config = ConfigParser.ConfigParser()
    config.readfp(StringIO(default_config))
 except:
-   print "[SRVBOT] Failed to load default config, exiting..."
+   logmsg('Failed to load default config, exiting...')
    exit()
 
 ## load custom config ##
-print "[SRVBOT] Checking custom config..."
+logmsg('Checking custom config...')
+
 if os.path.isfile('minebot.ini'):
-   print "[SRVBOT] Custom config found, loading..."
+   logmsg('Custom config found, loading...')
    try:
       config.read('minebot.ini')
    except:
-      print "[SRVBOT] Error loading custom config, exiting..."
+      logmsg('Error loading custom config, exiting...')
       exit()
 else:
-   print "[SRVBOT] Writing new config file..."
+   logmsg('Writing new config file...')
    try:
       config_file = open('minebot.ini', 'w')
       config.write(config_file)
       config_file.close()
    except:
-      print "[SRVBOT] Failed to write new config file, continuing..."
+      logmsg('Failed to write new config file, continuing...')
 
-print "[SRVBOT] Setting config..."
+logmsg('Setting config...')
 try:
    SERVER             = config.get('general', 'server')
    ADMINS             = config.get('general', 'admins').split(' ')
@@ -79,14 +117,14 @@ try:
    PASSTIME           = config.getint('general', 'password_timeout')
    motd               = config.get('general', 'motd').split('|')
 except:
-   print "[SRVBOT] Failed setting configuration, exiting..."
+   logmsg('Failed setting configuration, exiting...')
    exit()
 
-print "[SRVBOT] Running the server executable..."
+logmsg('Running the server executable...')
 server_args = ["java", "-Xmx%s" % (HEAPMEM_MAX), "-Xms%s" % (HEAPMEM_MIN), 
                "-jar", SERVER, "nogui"]
 
-if os.name == "nt":
+if os.name == 'nt':
    import win32pipe
    (stdin, stdout) = win32pipe.popen4(" ".join(server_args))
 
@@ -140,6 +178,9 @@ blocks = dict({
    "poweredcart": 343, "egg": 344
    })
 
+
+
+
 # Prepare some regexps
 # To add multiple admins, you can separate them with a pipe:
 # admin = re.compile('Flippeh|Somedude|Anotherdude')
@@ -161,21 +202,21 @@ try:
 
    if os.path.exists("server.bans"):
       try:
-         bans = open("server.bans", 'r')
+         bans = open('server.bans', 'r')
          ban_list = map(lambda x: x.rstrip(), bans.readlines()) # more magic!
 
       except:
-         print "[SRVBOT] Error while loading bans! Gotta continue with them"
+         logmsg('Error while loading bans! Gotta continue with them')
       finally:
          bans.close()
 
    else:
       try:
-         print "[SRVBOT] No ban file, creating it..."
-         bans = open("server.bans", 'w')
+         logmsg("No ban file, creating it...")
+         bans = open('server.bans', 'w')
 
       except:
-         print "[SRVBOT] Error creating 'server.bans'"
+         logmsg('Error creating \'server.bans\'')
       finally:
          bans.close()
 
@@ -194,7 +235,7 @@ try:
       if outready == []:
          for p in players:
             if (time() - players[p]['connected'] > PASSTIME) and not players[p]['allowed']:
-               stdin.write("kick %s\n" % p)
+               kick(p)
                del players[p]
                break
 
@@ -202,10 +243,10 @@ try:
          for s in outready:
             line = s.readline().rstrip()
 
-            if line == "":
+            if line == '':
                break
 
-            print "[SERVER] %s" % (line)
+            logsrv(line)
 
             chat = chatmessage.match(line)
             if chat:
@@ -216,70 +257,52 @@ try:
 
                if PASSWORD != None and not players[nick.lower()]['allowed']:
                   if players[nick.lower()]['allowed'] != True and text != PASSWORD:
-                     stdin.write("say Wrong password!\n")
+                     say('Wrong password!\n')
                   else:
                      players[nick.lower()]['allowed'] = True
-                     stdin.write("say Access granted - have fun!\n")
+                     say('Access granted - have fun!')
 
-               if parts[0] == "!give":
+               if parts[0] == '!give':
                   if (admin.match(nick) or nick.lower() in temp_admins):
                      try:
                         item = parts[3]
                         amount = parts[2]
                         target = parts[1]
 
-                        if not amount.isdigit():
-                           stdin.write("say Amount must be a number!\n")
-                           continue
-
-                        if not item.isdigit():
-                           try:
-                              item = blocks[item]
-                           except KeyError:
-                              stdin.write("say No such ID\n")
-                              continue
-
-                        for i in range(int(parts[2])):
-                           stdin.write("give %s %s\n" 
-                              % (parts[1], item))
+                        try:
+                           give(target, item, amount)
+                        except Mineception, me:
+                           say(me.errmsg)
+                           
                      except IndexError:
-                        stdin.write("say Syntax: !give <player> <amount> <what>\n")
+                        say('Syntax: !give <player> <amount> <what>')
                   else:
-                     stdin.write("say You're no admin, %s!\n" % (nick))
+                     say('You\'re no admin, %s!\n' % nick)
 
-               elif parts[0] == "!stop":
+               elif parts[0] == '!stop':
                   if (admin.match(nick) or nick.lower() in temp_admins):
                      stdin.write("stop\n")
                   else:
-                     stdin.write("say You're no admin, %s!\n" % (nick))
+                     say('You\'re no admin, %s!\n' % nick)
 
-               elif parts[0] == "!giveall":
+               elif parts[0] == '!giveall':
                   if (admin.match(nick) or nick.lower() in temp_admins):
                      try:
                         item = parts[2]
                         amount = parts[1]
-   
-                        if not amount.isdigit():
-                           stdin.write("say Amount must be a number!\n")
-                           continue
-   
-                        if not item.isdigit():
-                           try:
-                              item = blocks[item]
-                           except KeyError:
-                              stdin.write("say No such ID\n")
-                              continue
-   
-                        for target in players:
-                           for i in range(int(amount)):
-                              stdin.write("give %s %s\n" % (target, item))
+
+                        try:
+                           for target in players:
+                             give(target, item, amount)
+                        except Mineception, me:
+                           say(me.errmsg)
 
                      except IndexError:
-                       stdin.write("say Syntax: !giveall <amount> <what>\n")
+                       say('Syntax: !giveall <amount> <what>')
                   else:
-                     stdin.write("say You're no admin, %s!\n" % (nick))
+                     say('You\'re no admin, %s!' % nick)
 
-               elif parts[0] == "!lite":
+               elif parts[0] == '!lite':
                   if (admin.match(nick)):
                      try:
                         target = parts[1]
@@ -292,16 +315,17 @@ try:
                               config.write(config_file)
                               config_file.close()
                            except:
-                              print "[SRVBOT] Failed to write config file on %s..." % parts[0]
-                           stdin.write("say Made %s lite admin\n" % (target))
+                              logmsg('Failed to write config file on %s...' % parts[0])
+
+                           say('Made %s lite admin' % target)
                         else:
-                           stdin.write("say Player already is an admin\n")
+                           say('Player already is an admin')
                      except IndexError:
-                        stdin.write("say Syntax: !lite <player>\n")
+                        say('Syntax: !lite <player>')
                   else:
-                     stdin.write("say You're no admin, %s!\n" % (nick))
+                     say('You\'re no admin, %s!' % (nick))
    
-               elif parts[0] == "!unlite":
+               elif parts[0] == '!unlite':
                   if (admin.match(nick)):
                      try:
                         target = parts[1]
@@ -314,34 +338,34 @@ try:
                               config.write(config_file)
                               config_file.close()
                            except:
-                              print "[SRVBOT] Failed to write config file on %s..." % parts[0]
-                           stdin.write("say Removed %s's admin\n" % (target))
+                              logmsg('Failed to write config file on %s...' % parts[0])
+                              
+                           say('Removed %s\'s admin' % target)
                         else:
-                           stdin.write("say No such admin\n")
+                           say('No such admin')
                      except IndexError:
-                        stdin.write("say Syntax: !unlite <player>\n")
+                        say('Syntax: !unlite <player>')
                   else:
-                     stdin.write("say You're no admin, %s!\n" % (nick))
+                     say('You\'re no admin, %s!' % nick)
    
-               elif parts[0] == "!kick":
+               elif parts[0] == '!kick':
                   if (admin.match(nick) or nick in temp_admins):
                      try:
                         target = parts[1]
-                        stdin.write("kick %s\n" % (target))
+                        kick(target)
+
                      except IndexError:
-                        stdin.write("say Syntax: !kick <player>\n")
+                        say('Syntax: !kick <player>')
                   else:
-                     stdin.write("say You're no admin, %s!\n" % (nick))
+                     say('You\'re no admin, %s!' % nick)
 
                elif parts[0] == "!ban":
                   if (admin.match(nick) or nick.lower() in temp_admins):
-   
-                     try:
+                      try:
                         target = parts[1].lower()
    
                         if target in ban_list:
-                           stdin.write("say Player '%s' already banned\n" %
-                                 target)
+                           say('Player \'%s\' is already banned' % target)
                         else:
                            ban_list.append(target)
    
@@ -352,17 +376,17 @@ try:
    
                               bans.close()
    
-                              stdin.write("say Banned player '%s'\n" 
-                                    % target)
+                              say('Banned player \'%s\'' % target)
                            except:
-                              stdin.write("say MAJOR OOPSIE!\n")
-                     except IndexError:
-                        stdin.write("say Syntax: !ban <player>\n")
-                        continue
-                  else:
-                     stdin.write("say You're no admin, %s!\n" % (nick))
+                              say('MAJOR OOPSIE!')
 
-               elif parts[0] == "!unban":
+                      except IndexError:
+                         say('Syntax: !ban <player>')
+                         continue
+                  else:
+                     say('You\'re no admin, %s!' % nick)
+
+               elif parts[0] == '!unban':
                   if (admin.match(nick) or nick.lower() in temp_admins):
    
                      try:
@@ -379,39 +403,38 @@ try:
    
                               bans.close()
                            except:
-                              stdin.write("say MAJOR OOPSIE\n")
+                              say('MAJOR OOPSIE')
    
-                           stdin.write("say Removed '%s' from banlist\n" 
-                                 % target)
+                           say('Removed \'%s\' from banlist' % target)
                         else:
-                           stdin.write("say Player not banned\n")
+                           say('Player not banned')
                      except IndexError:
-                        stdin.write("say Syntax: !unban <player>\n")
+                        say('Syntax: !unban <player>')
                         continue
    
                   else:
-                     stdin.write("say You're no admin, %s!\n" % (nick))
+                     say('You\'re no admin, %s!' % nick)
    
-               elif parts[0] == "!who":
-                  stdin.write("list\n")
+               elif parts[0] == '!who':
+                  stdin.write('list\n')
    
-               elif parts[0] == "!time":
-                  t = strftime("%H:%M:%S (%Z)")
-                  stdin.write("say The current server time is: %s\n" % (t))
+               elif parts[0] == '!time':
+                  t = strftime('%H:%M:%S (%Z)')
+                  say('The current server time is: %s' % t)
    
-               elif parts[0] == "!votekick":
+               elif parts[0] == '!votekick':
                   voter  = nick
    
                   try:
                      target = parts[1].lower()
    
                      if admin.match(target) or nick in temp_admins:
-                        stdin.write("say You can't votekick admins!\n")
+                        say('You can\'t votekick admins!')
                         continue
    
                      try:
                         if voter in votekicks[target]:
-                           stdin.write("say You can't vote twice\n")
+                           say('You can\'t vote twice')
                         else:
                            votekicks[target].append(voter)
                      except KeyError:
@@ -419,21 +442,21 @@ try:
 
                      perc = float(len(votekicks[target])) * 100 / current_players
    
-                     stdin.write("say Voting to kick %s: %.2f%% / %.2f%%\n" 
-                           % (target, perc, VOTEKICK_THRESHOLD))
+                     say('Voting to kick %s: %.2f%% / %.2f%%' % (target, perc, VOTEKICK_THRESHOLD))
    
                      if perc >= VOTEKICK_THRESHOLD:
-                        stdin.write("say Vote passed!\n")
-                        stdin.write("kick %s\n" % (target))
+                        say('Vote passed!')
+                        kick(target)
    
                         votekicks.pop(target)
                   except IndexError:
-                     stdin.write("say Syntax: !votekick <player>\n")
+                     say('Syntax: !votekick <player>')
 
-               elif parts[0] == "!motd":
+               elif parts[0] == '!motd':
                   if (len(parts) == 1):
                      for line in motd:
-                        stdin.write("say MOTD: %s\n" % line.replace("$nick", nick))
+                        say('MOTD: %s' % line.replace("$nick", nick))
+
                   elif (admin.match(nick)):
                      try:
                         motd = string.join(parts[1:], " ").split("|")
@@ -443,47 +466,44 @@ try:
                            config.write(config_file)
                            config_file.close()
                         except:
-                           print "[SRVBOT] Failed to write config file on %s..." % parts[0]
-                        for line in motd:
-                           stdin.write("say MOTD: %s\n" % line)
-                     except IndexError:
-                        stdin.write("say Syntax: !motd <message>\n")
-                  else:
-                     stdin.write("say You're no admin, %s!\n" % nick)
+                           logmsg('Failed to write config file on %s...' % parts[0])
 
-               elif parts[0] == "!help":
-                  stdin.write("say !time - Get current server time\n")
-                  stdin.write("say !who  - Show who's playing and how long\n")
-                  stdin.write("say !votekick <nick> Vote to kick someone\n")
-                  stdin.write("say !uptime - Show server uptime\n")
+                        for line in motd:
+                           say('MOTD: %s' % line)
+
+                     except IndexError:
+                        say('Syntax: !motd <message>')
+                  else:
+                     say('You\'re no admin, %s!' % nick)
+
+               elif parts[0] == '!help':
+                  say('!time - Get current server time')
+                  say('!who  - Show who\'s playing and how long')
+                  say('!votekick <nick> Vote to kick someone')
+                  say('!uptime - Show server uptime')
 
                   if admin.match(nick):
-                     stdin.write("say !give <nick> <amount> <Item ID | Name> - Give someone an item\n")
-                     stdin.write("say !kick <nick> - Kick someone\n")
-                     stdin.write("say !stop - Stop the server\n")
-                     stdin.write("say !ban <nick> - Ban someone\n")
-                     stdin.write("say !unban <nick> - Unban someone\n")
-                     stdin.write("say !lite <nick> - Make someone a lite admin\n")
-                     stdin.write("say !unlite <nick> - Remove lite admin status\n")
-                     stdin.write("say !motd <message> - set the MOTD\n")
-                     stdin.write("say !motd - display the MOTD\n")
+                     say('!give <nick> <amount> <Item ID | Name> - Give someone an item')
+                     say('!kick <nick> - Kick someone')
+                     say('!stop - Stop the server')
+                     say('!ban <nick> - Ban someone')
+                     say('!unban <nick> - Unban someone')
+                     say('!lite <nick> - Make someone a lite admin')
+                     say('!unlite <nick> - Remove lite admin status')
+                     say('!motd <message> - set the MOTD')
+                     say('!motd - display the MOTD')
    
-               elif parts[0] == "!uptime":
+               elif parts[0] == '!uptime':
                   uptime = int(time()) - started
    
-                  stdin.write("say The server has been up for %s\n" %
-                        (datetime.timedelta(seconds = uptime)))
-               elif parts[0] == "!debug":
-                  print players
-                  print votekicks
-                  print temp_admins
+                  say('The server has been up for %s\n' % (datetime.timedelta(seconds = uptime)))
 
             else: #NO chat
                # Server responded with the userlist, parse and spread the news
                who_resp = srv_list_response.search(line)
                if who_resp:
                   players_on = who_resp.group(1).split(", ")
-                  stdin.write("say Currently online:\n")
+                  say('Currently online:')
    
                   for i in players_on:
                      try:
@@ -491,17 +511,14 @@ try:
                         connected = datetime.timedelta(seconds = contime)
    
                         if admin.match(i):
-                           stdin.write("say - %s (Admin) [%s]\n" 
-                                 % (i, connected))
+                           say(' - %s (Admin) [%s]\n' % (i, connected))
                         elif i.lower() in temp_admins:
-                           stdin.write("say - %s (Lite Admin) [%s]\n" 
-                                 % (i, connected))
+                           say(' - %s (Lite Admin) [%s]' % (i, connected))
                         else:
-                           stdin.write("say - %s [%s]\n"
-                                 % (i, connected))
+                           say(' - %s [%s]' % (i, connected))
    
                      except KeyError:
-                        print "[SRVBOT] Unlisted user: %s" % (i)
+                        logmsg('Unlisted user: %s' % (i))
    
                   continue
    
@@ -511,8 +528,8 @@ try:
                   current_players = int(ply_rsp.group(1))
    
                   if current_players > MAXPLAYER and not admin.match(last_joined):
-                     stdin.write("say Maximum player limit has been reached\n")
-                     stdin.write("kick %s\n" % (last_joined))
+                     say('Maximum player limit has been reached')
+                     kick(last_joined)
    
                   continue
    
@@ -523,17 +540,16 @@ try:
                   last_joined = nick.lower()
 
                   if last_joined in ban_list:
-                     stdin.write("kick %s\n" % (last_joined))
+                     kick(last_joined)
                   else:
                      players[last_joined] = dict({"connected": int(time())})
    
                      for line in motd:
-                        stdin.write("say MOTD: %s\n" % line.replace("$nick", nick))
+                        say('MOTD: %s' % line.replace('$nick', nick))
    
                      if PASSWORD != None and not admin.match(last_joined):
                         players[last_joined]['allowed'] = False
-                        stdin.write("say Please enter the password within %d seconds\n"
-                              % (PASSTIME))
+                        say('Please enter the password within %d seconds' % PASSTIME)
                      else:
                         players[last_joined]['allowed'] = True
 
@@ -550,12 +566,14 @@ try:
                   if nick in votekicks:
                      votekicks.pop(nick)
 
-   print "[SRVBOT] Server shut down"
+   logmsg('Server shut down')
 
 
 except KeyboardInterrupt:
-   print "[SRVBOT] Caught Ctrl-C, sending stop command"
+   logmsg('Caught Ctrl-C, sending stop command')
    stdin.write("stop\n")
 
-   print "[SRVBOT] Waiting for server to die"
-   server.wait() # wait for it to die
+   logmsg('Waiting for server to die')
+
+   if (os.name != 'nt'):
+      server.wait() # wait for it to die

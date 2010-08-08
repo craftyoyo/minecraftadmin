@@ -178,7 +178,7 @@ else:
 
 # Proudly scraped off http://copy.bplaced.net/mc/ids.php
 blocks = dict({
-   "rock": 1, "grass": 2, "dirt": 3, "cobblestone": 4, "wood": 5,
+   "stone": 1, "rock": 1, "grass": 2, "dirt": 3, "cobblestone": 4, "wood": 5,
    "sapling": 6, "bedrock": 7, "water": 8, "stillwater": 9, "lava": 10,
    "stilllava": 11, "sand": 12, "gravel": 13, "goldore": 14, "ironore": 15,
    "coalore": 16, "tree": 17, "leaves": 18, "sponge": 19, "glass": 20,

@@ -13,6 +13,25 @@ import string
 import ConfigParser
 from StringIO import StringIO
 
+## default config ##
+default_config = """
+[general]
+server = ./minecraft_server.jar
+admins =
+whitelist =
+lite_admins =
+motd = Welcome $nick!|Type "!help" to see the available commands.|Type "!who" to see who is playing right now.
+max_players = 10
+voteban_threshold = 90
+votekick_threshold = 80
+password =
+password_timeout = 15
+[java]
+heapmem_max = 1024M
+heapmem_min = 1024M
+"""
+
+
 
 class Mineception(Exception): #TODO: Come up with something better!
    def __init__(self, value):
@@ -27,6 +46,36 @@ def say(message):
 
 def kick(user):
    stdin.write('kick %s\n' % user)
+
+def unban(user):
+   if user.lower() in ban_list:
+      ban_list.remove(user.lower())
+
+      savebans()
+   else:
+      raise Mineception('User \'%s\' not banned' % user)
+
+def ban(user, kick = False): # default to no kicking
+   if not user.lower() in ban_list:
+      ban_list.append(user.lower())
+      
+      if kick:
+         kick(user)
+
+      savebans()
+   else:
+      raise Mineception('User \'%s\' already banned' % user)
+
+def savebans():
+   try:
+      bans = open('server.bans', 'w')
+      for nick in ban_list:
+         bans.write('%s\n' % nick)
+   except:
+      raise Mineception('File I/O Error writing server.bans')
+   finally:
+      bans.close()
+
 
 def give(player, item, amount):
    if not amount.isdigit():
@@ -49,26 +98,10 @@ def logmsg(msg):
 def logsrv(msg):
    print "[SERVER] %s" %msg
 
-
+     
 logmsg('Starting...')
-
-## default config ##
-default_config = """
-[general]
-server = ./minecraft_server.jar
-admins =
-lite_admins =
-motd = Welcome $nick!|Type "!help" to see the available commands.|Type "!who" to see who is playing right now.
-max_players = 10
-votekick_threshold = 80
-password =
-password_timeout = 15
-[java]
-heapmem_max = 1024M
-heapmem_min = 1024M
-"""
-
 logmsg('Loading default config...')
+
 try:
    config = ConfigParser.ConfigParser()
    config.readfp(StringIO(default_config))
@@ -96,7 +129,7 @@ else:
       logmsg('Failed to write new config file, continuing...')
 
 logmsg('Setting config...')
-try:
+try: #TODO: Decide between THIS_SPELLING and this_spelling :P
    SERVER             = config.get('general', 'server')
    ADMINS             = config.get('general', 'admins').split(' ')
    if ADMINS[0] == '':
@@ -107,13 +140,20 @@ try:
    temp_admins        = config.get('general', 'lite_admins').split(' ')
    if temp_admins[0] == '':
       del(temp_admins[0])
+
+   whitelist          = config.get('general', 'whitelist').split(' ')
+   if whitelist[0] == '':
+      del(whitelist[0])
+
    HEAPMEM_MAX        = config.get('java', 'heapmem_max')
    HEAPMEM_MIN        = config.get('java', 'heapmem_min')
    MAXPLAYER          = config.getint('general', 'max_players')
+   VOTEBAN_THRESHOLD  = config.getint('general', 'voteban_threshold')
    VOTEKICK_THRESHOLD = config.getint('general', 'votekick_threshold')
    PASSWORD           = config.get('general', 'password')
    if PASSWORD == '':
       PASSWORD = None
+
    PASSTIME           = config.getint('general', 'password_timeout')
    motd               = config.get('general', 'motd').split('|')
 except:
@@ -198,6 +238,7 @@ try:
    current_players = 0
    started         = int(time())
    votekicks       = dict({})
+   votebans        = dict({})
    players         = dict({})
 
    if os.path.exists("server.bans"):
@@ -359,30 +400,65 @@ try:
                   else:
                      say('You\'re no admin, %s!' % nick)
 
+               elif parts[0] == '!white':
+                  if (admin.match(nick) or nick.lower() in temp_admins):
+                     try:
+                        target = parts[1]
+
+                        if not target.lower() in whitelist:
+                           whitelist.append(target.lower())
+
+                           try:
+                              config.set('general', 'whitelist', string.join(whitelist, ' '))
+                              config_file = open('minebot.ini', 'w')
+                              config.write(config_file)
+                              say('Added \'%s\' to whitelist' % target)
+                           except: 
+                              say('Could not save user on the whitelist!')
+                           finally:
+                              config_file.close()
+                        else:
+                           say('User already on whitelist!')
+
+                     except IndexError:
+                        say('Syntax: !white <nick>')
+
+               elif parts[0] == "!unwhite":
+                  if (admin.match(nick) or nick.lower() in temp_admins):
+                     try:
+                        target = parts[1]
+
+                        if target.lower() in whitelist:
+                           whitelist.remove(target.lower())
+
+                           try:
+                              config.set('general', 'whitelist', string.join(whitelist, ' '))
+                              config_file = open('minebot.ini', 'w')
+                              config.write(config_file)
+                              say('Removed \'%s\' from whitelist' % target)
+                           except:
+                              say('Could not save the whitelist')
+                           finally:
+                              config_file.close()
+                        else:
+                           say('User not on whitelist')
+                     except IndexError:
+                        say('Syntax: !unwhite <nick>')
+
                elif parts[0] == "!ban":
                   if (admin.match(nick) or nick.lower() in temp_admins):
-                      try:
-                        target = parts[1].lower()
+                     try:
+                        target = parts[1]
    
-                        if target in ban_list:
-                           say('Player \'%s\' is already banned' % target)
-                        else:
-                           ban_list.append(target)
-   
-                           try:
-                              bans = open('server.bans', 'w')
-                              for nick in ban_list:
-                                 bans.write("%s\n" % nick)
-   
-                              bans.close()
-   
-                              say('Banned player \'%s\'' % target)
-                           except:
-                              say('MAJOR OOPSIE!')
+                        try:
+                           ban(target)   
+                           say('Banned player \'%s\'' % target)
+                        except Mineception, me:
+                           say('Unable to add ban: %s' % me.errmsg)
 
-                      except IndexError:
-                         say('Syntax: !ban <player>')
-                         continue
+                     except IndexError:
+                        say('Syntax: !ban <player>')
+
                   else:
                      say('You\'re no admin, %s!' % nick)
 
@@ -390,27 +466,16 @@ try:
                   if (admin.match(nick) or nick.lower() in temp_admins):
    
                      try:
-                        target = parts[1].lower()
+                        target = parts[1]
    
-                        if target in ban_list:
-                           ban_list.remove(target)
+                        try:
+                           unban(target)
+                           say('Unbanned player \'%s\'' % target)
+                        except Mineception, me:
+                           say('Unable to unban: %s' % me.errmsg)                
    
-                           try:
-                              bans = open('server.bans', 'w')
-   
-                              for n in ban_list:
-                                 bans.write("%s\n" % n)
-   
-                              bans.close()
-                           except:
-                              say('MAJOR OOPSIE')
-   
-                           say('Removed \'%s\' from banlist' % target)
-                        else:
-                           say('Player not banned')
                      except IndexError:
                         say('Syntax: !unban <player>')
-                        continue
    
                   else:
                      say('You\'re no admin, %s!' % nick)
@@ -423,7 +488,7 @@ try:
                   say('The current server time is: %s' % t)
    
                elif parts[0] == '!votekick':
-                  voter  = nick
+                  voter = nick
    
                   try:
                      target = parts[1].lower()
@@ -435,6 +500,7 @@ try:
                      try:
                         if voter in votekicks[target]:
                            say('You can\'t vote twice')
+                           continue
                         else:
                            votekicks[target].append(voter)
                      except KeyError:
@@ -442,7 +508,8 @@ try:
 
                      perc = float(len(votekicks[target])) * 100 / current_players
    
-                     say('Voting to kick %s: %.2f%% / %.2f%%' % (target, perc, VOTEKICK_THRESHOLD))
+                     say('Voting to kick %s: %.2f%% / %.2f%%' 
+                           % (target, perc, VOTEKICK_THRESHOLD))
    
                      if perc >= VOTEKICK_THRESHOLD:
                         say('Vote passed!')
@@ -451,6 +518,44 @@ try:
                         votekicks.pop(target)
                   except IndexError:
                      say('Syntax: !votekick <player>')
+
+               elif parts[0] == '!voteban':
+                  voter = nick
+
+                  try:
+                     target = parts[1].lower()
+
+                     if admin.match(target) or nick in temp_admins:
+                        say('You can\'t voteban admins!')
+                        continue
+
+                     try:
+                        if voter in votebans[target]:
+                           say('You can\'t vote twice')
+                           continue
+                        else:
+                           votebans[target].append(voter)
+
+                     except KeyError:
+                        votebans[target] = [voter]
+
+                     perc = float(len(votebans[target])) * 100 / current_players
+
+                     say('Voting to ban %s: %.2f%% / %.2f%%' 
+                           % (target, perc, VOTEBAN_THRESHOLD))
+
+                     if perc >= VOTEBAN_THRESHOLD:
+                        say('Vote passed!')
+   
+                        try:
+                           ban(target, True)
+                        except Mineception, me:
+                           say('Banning has failed: %s' % me.errmsg)
+
+                        votebans.pop(target)
+
+                  except IndexError:
+                     say('Syntax: !voteban <player>')
 
                elif parts[0] == '!motd':
                   if (len(parts) == 1):
@@ -547,7 +652,10 @@ try:
                      for line in motd:
                         say('MOTD: %s' % line.replace('$nick', nick))
    
-                     if PASSWORD != None and not admin.match(last_joined):
+                     if PASSWORD != None \
+                      and not admin.match(last_joined) \
+                      and not last_joined in whitelist \
+                      and not last_joined in temp_admins:
                         players[last_joined]['allowed'] = False
                         say('Please enter the password within %d seconds' % PASSTIME)
                      else:
@@ -565,6 +673,9 @@ try:
    
                   if nick in votekicks:
                      votekicks.pop(nick)
+
+                  if nick in votebans:
+                     votebans.pop(nick)
 
    logmsg('Server shut down')
 

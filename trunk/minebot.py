@@ -79,9 +79,8 @@ def savebans():
 
 
 def give(player, item, amount):
-   if player not in players:
+   if player.lower() not in players:
       raise Mineception('Unknown player: \'%s\'' % player)
-
    try:
       amount = int(amount)
    except ValueError:

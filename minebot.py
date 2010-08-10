@@ -26,6 +26,7 @@ voteban_threshold = 90
 votekick_threshold = 80
 password =
 password_timeout = 15
+atlogin =
 [java]
 heapmem_max = 1024M
 heapmem_min = 1024M
@@ -78,10 +79,13 @@ def savebans():
 
 
 def give(player, item, amount):
-   if not amount.isdigit():
+   if player not in players:
+      raise Mineception('Unknown player: \'%s\'' % player)
+
+   try:
+      amount = int(amount)
+   except ValueError:
       raise Mineception('Amount must be a number')
-   
-   amountint = int(amount)
 
    if not item.isdigit():
       try: 
@@ -89,7 +93,7 @@ def give(player, item, amount):
       except KeyError:
          raise Mineception('Unknown Item-ID: \'%s\'' % item)
 
-   for i in range(amountint):
+   for i in range(amount):
       stdin.write('give %s %s\n' % (player, item))
 
 def logmsg(msg):
@@ -156,6 +160,9 @@ try: #TODO: Decide between THIS_SPELLING and this_spelling :P
 
    PASSTIME           = config.getint('general', 'password_timeout')
    motd               = config.get('general', 'motd').split('|')
+   atlogin            = config.get('general', 'atlogin').split(' ')
+   if atlogin[0] == '':
+      del(atlogin[0])
 except:
    logmsg('Failed setting configuration, exiting...')
    exit()
@@ -325,7 +332,7 @@ try:
                      say('You\'re no admin, %s!\n' % nick)
 
                elif parts[0] == '!stop':
-                  if (admin.match(nick) or nick.lower() in temp_admins):
+                  if admin.match(nick):
                      stdin.write("stop\n")
                   else:
                      say('You\'re no admin, %s!\n' % nick)
@@ -585,25 +592,44 @@ try:
                   else:
                      say('You\'re no admin, %s!' % nick)
 
+               elif parts[0] == '!atlogin':
+                  if (admin.match(nick)):
+                     try:
+                        atlogin = string.join(parts[1:],'').replace(' ','').split(',')
+                        try:
+                           config.set('general','atlogin',string.join(atlogin,' '))
+                           config_file = open('minebot.ini', 'w')
+                           config.write(config_file)
+                           config_file.close()
+                        except:
+                           say('Failed to write config file on %s...' % parts[0])
+                     except IndexError:
+                        logmsg('Syntax: !atlogin item1,item2,item3')
+                  else:
+                     say('You\'re no admin, %s!' %nick)
+
                elif parts[0] == '!help':
                   say('!time - Get current server time')
                   say('!who  - Show who\'s playing and how long')
                   say('!votekick <nick> Vote to kick someone')
+                  say('!voteban <nick> Vote to ban someone')
                   say('!uptime - Show server uptime')
                   say('!motd - display the MOTD')
 
-                  if admin.match(nick):
+                  if admin.match(nick) or nick.lower() in temp_admins:
                      say('!give <nick> <amount> <Item ID | Name> - Give someone an item')
                      say('!kick <nick> - Kick someone')
-                     say('!stop - Stop the server')
                      say('!ban <nick> - Ban someone')
                      say('!unban <nick> - Unban someone')
-                     say('!lite <nick> - Make someone a lite admin')
-                     say('!unlite <nick> - Remove lite admin status')
-                     say('!motd <message> - set the MOTD')
                      say('!white <nick> - Add someone to the whitelist')
                      say('!unwhite <nick> - Remove someone from the whitelist')
 
+                     if admin.match(nick):
+                        say('!lite <nick> - Make someone a lite admin')
+                        say('!unlite <nick> - Remove lite admin status')
+                        say('!motd <message> - set the MOTD')
+                        say('!atlogin <item>[,item[,item]] - give players items at login')
+                        say('!stop - Stop the server')
    
                elif parts[0] == '!uptime':
                   uptime = int(time()) - started
@@ -615,7 +641,10 @@ try:
                who_resp = srv_list_response.search(line)
                if who_resp:
                   players_on = who_resp.group(1).split(", ")
-                  say('Currently online:')
+                  try:
+                     say('Currently online [%s/%s]:' % (len(players_on),min(int(MAXPLAYER),20)))
+                  except ValueError:
+                     say('Currently online [?/?]:')
    
                   for i in players_on:
                      try:
@@ -658,7 +687,12 @@ try:
    
                      for line in motd:
                         say('MOTD: %s' % line.replace('$nick', nick))
-   
+                     for item in atlogin:
+                        try:
+                           give(last_joined,item,1)
+                        except Mineception as me:
+                           say(me.errmsg)
+                           
                      if PASSWORD != None \
                       and not admin.match(last_joined) \
                       and not last_joined in whitelist \

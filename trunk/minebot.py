@@ -41,9 +41,15 @@ class Mineception(Exception): #TODO: Come up with something better!
    def __str__(self):
       print self.errmsg
 
+def logmsg(msg):
+   print "[SRVBOT] %s" % msg
 
-def say(message):
-   stdin.write('say %s\n' % message)
+
+def say(message, is_console = False):
+   if is_console:
+      logmsg(message)
+   else:
+      stdin.write('say %s\n' % message)
 
 def kick(user):
    stdin.write('kick %s\n' % user)
@@ -94,9 +100,6 @@ def give(player, item, amount):
 
    for i in range(amount):
       stdin.write('give %s %s\n' % (player, item))
-
-def logmsg(msg):
-   print "[SRVBOT] %s" % msg
 
 def logsrv(msg):
    print "[SERVER] %s" %msg
@@ -179,7 +182,7 @@ else:
          stdout = PIPE,
          stdin = PIPE,
          stderr = PIPE)
-   outputs = [server.stderr, server.stdout]
+   outputs = [server.stderr, server.stdout, sys.stdin]
    stdin = server.stdin
 
 # Proudly scraped off http://copy.bplaced.net/mc/ids.php
@@ -290,28 +293,38 @@ try:
       else:
          for s in outready:
             line = s.readline().rstrip()
+            text = None
 
             if line == '':
                break
-
-            logsrv(line)
-
-            chat = chatmessage.match(line)
+            
+            if s == sys.stdin:
+               logsrv('[CONSOLE] %s' % line)
+               nick = "<console>"
+               text = line
+               is_console = True
+            else:
+               logsrv(line)
+               chat = chatmessage.match(line)
+            
             if chat:
                nick = chat.group(1)
                text = chat.group(2)
  
+               is_console = False
+
+            if text is not None:   
                parts = text.split(" ")
 
-               if PASSWORD != None and not players[nick.lower()]['allowed']:
-                  if players[nick.lower()]['allowed'] != True and text != PASSWORD:
+               if not is_console and PASSWORD != None and not players[nick.lower()]['allowed']:
+                  if players[nick.lower()]['allowed'] != True and text != PASSWORD :
                      say('Wrong password!\n')
                   else:
                      players[nick.lower()]['allowed'] = True
                      say('Access granted - have fun!')
 
                if parts[0] == '!give':
-                  if (admin.match(nick) or nick.lower() in temp_admins):
+                  if (is_console or admin.match(nick) or nick.lower() in temp_admins):
                      try:
                         items = string.join(parts[3:],'').replace(' ','').split(',')
                         amount = parts[2]
@@ -322,22 +335,22 @@ try:
                               for target in targets:
                                  give(target, item, amount)
                            except Mineception, me:
-                              say(me.errmsg)
+                              say(me.errmsg, is_console)
 
                            
                      except IndexError:
-                        say('Syntax: !give <player> <amount> <what>')
+                        say('Syntax: !give <player> <amount> <what>', is_console)
                   else:
                      say('You\'re no admin, %s!\n' % nick)
 
                elif parts[0] == '!stop':
-                  if admin.match(nick):
+                  if is_console or admin.match(nick):
                      stdin.write("stop\n")
                   else:
                      say('You\'re no admin, %s!\n' % nick)
 
                elif parts[0] == '!giveall':
-                  if (admin.match(nick) or nick.lower() in temp_admins):
+                  if (is_console or admin.match(nick) or nick.lower() in temp_admins):
                      try:
                         items = string.join(parts[2:],'').replace(' ','').split(',')
                         amount = parts[1]
@@ -346,15 +359,15 @@ try:
                               for target in players:
                                 give(target, item, amount)
                            except Mineception, me:
-                              say(me.errmsg)
+                              say(me.errmsg, is_console)
 
                      except IndexError:
-                       say('Syntax: !giveall <amount> <what>')
+                       say('Syntax: !giveall <amount> <what>', is_console)
                   else:
                      say('You\'re no admin, %s!' % nick)
 
                elif parts[0] == '!lite':
-                  if (admin.match(nick)):
+                  if (is_console or admin.match(nick)):
                      try:
                         target = parts[1]
    
@@ -370,14 +383,14 @@ try:
 
                            say('Made %s lite admin' % target)
                         else:
-                           say('Player already is an admin')
+                           say('Player already is an admin', is_console)
                      except IndexError:
-                        say('Syntax: !lite <player>')
+                        say('Syntax: !lite <player>', is_console)
                   else:
                      say('You\'re no admin, %s!' % (nick))
    
                elif parts[0] == '!unlite':
-                  if (admin.match(nick)):
+                  if (is_console or admin.match(nick)):
                      try:
                         target = parts[1]
    
@@ -393,25 +406,25 @@ try:
                               
                            say('Removed %s\'s admin' % target)
                         else:
-                           say('No such admin')
+                           say('No such admin', is_console)
                      except IndexError:
-                        say('Syntax: !unlite <player>')
+                        say('Syntax: !unlite <player>', is_console)
                   else:
                      say('You\'re no admin, %s!' % nick)
    
                elif parts[0] == '!kick':
-                  if (admin.match(nick) or nick in temp_admins):
+                  if (is_console or admin.match(nick) or nick in temp_admins):
                      try:
                         target = parts[1]
                         kick(target)
 
                      except IndexError:
-                        say('Syntax: !kick <player>')
+                        say('Syntax: !kick <player>', is_console)
                   else:
                      say('You\'re no admin, %s!' % nick)
 
                elif parts[0] == '!white':
-                  if (admin.match(nick) or nick.lower() in temp_admins):
+                  if (is_console or admin.match(nick) or nick.lower() in temp_admins):
                      try:
                         target = parts[1]
 
@@ -424,17 +437,17 @@ try:
                               config.write(config_file)
                               say('Added \'%s\' to whitelist' % target)
                            except: 
-                              say('Could not save user on the whitelist!')
+                              say('Could not save user on the whitelist!', is_console)
                            
                               config_file.close()
                         else:
-                           say('User already on whitelist!')
+                           say('User already on whitelist!', is_console)
 
                      except IndexError:
-                        say('Syntax: !white <nick>')
+                        say('Syntax: !white <nick>', is_console)
 
                elif parts[0] == "!unwhite":
-                  if (admin.match(nick) or nick.lower() in temp_admins):
+                  if (is_console or admin.match(nick) or nick.lower() in temp_admins):
                      try:
                         target = parts[1]
 
@@ -447,16 +460,16 @@ try:
                               config.write(config_file)
                               say('Removed \'%s\' from whitelist' % target)
                            except:
-                              say('Could not save the whitelist')
+                              say('Could not save the whitelist', is_console)
                            
                               config_file.close()
                         else:
-                           say('User not on whitelist')
+                           say('User not on whitelist', is_console)
                      except IndexError:
-                        say('Syntax: !unwhite <nick>')
+                        say('Syntax: !unwhite <nick>', is_console)
 
                elif parts[0] == "!ban":
-                  if (admin.match(nick) or nick.lower() in temp_admins):
+                  if (is_console or admin.match(nick) or nick.lower() in temp_admins):
                      try:
                         target = parts[1]
    
@@ -464,16 +477,16 @@ try:
                            ban(target)   
                            say('Banned player \'%s\'' % target)
                         except Mineception, me:
-                           say('Unable to add ban: %s' % me.errmsg)
+                           say('Unable to add ban: %s' % me.errmsg, is_console)
 
                      except IndexError:
-                        say('Syntax: !ban <player>')
+                        say('Syntax: !ban <player>', is_console)
 
                   else:
                      say('You\'re no admin, %s!' % nick)
 
                elif parts[0] == '!unban':
-                  if (admin.match(nick) or nick.lower() in temp_admins):
+                  if (is_console or admin.match(nick) or nick.lower() in temp_admins):
    
                      try:
                         target = parts[1]
@@ -482,10 +495,10 @@ try:
                            unban(target)
                            say('Unbanned player \'%s\'' % target)
                         except Mineception, me:
-                           say('Unable to unban: %s' % me.errmsg)                
+                           say('Unable to unban: %s' % me.errmsg, is_console)
    
                      except IndexError:
-                        say('Syntax: !unban <player>')
+                        say('Syntax: !unban <player>', is_console)
    
                   else:
                      say('You\'re no admin, %s!' % nick)
@@ -495,9 +508,9 @@ try:
    
                elif parts[0] == '!time':
                   t = strftime('%H:%M:%S (%Z)')
-                  say('The current server time is: %s' % t)
+                  say('The current server time is: %s' % t, is_console)
    
-               elif parts[0] == '!votekick':
+               elif parts[0] == '!votekick' and not is_console:
                   voter = nick
    
                   try:
@@ -529,7 +542,7 @@ try:
                   except IndexError:
                      say('Syntax: !votekick <player>')
 
-               elif parts[0] == '!voteban':
+               elif parts[0] == '!voteban' and not is_console:
                   voter = nick
 
                   try:
@@ -570,9 +583,9 @@ try:
                elif parts[0] == '!motd':
                   if (len(parts) == 1):
                      for line in motd:
-                        say('MOTD: %s' % line.replace("$nick", nick))
+                        say('MOTD: %s' % line.replace("$nick", nick), is_console)
 
-                  elif (admin.match(nick)):
+                  elif (is_console or admin.match(nick)):
                      try:
                         motd = string.join(parts[1:], " ").split("|")
                         try:
@@ -592,7 +605,7 @@ try:
                      say('You\'re no admin, %s!' % nick)
 
                elif parts[0] == '!atlogin':
-                  if (admin.match(nick)):
+                  if (is_console or admin.match(nick)):
                      try:
                         atlogin = string.join(parts[1:],'').replace(' ','').split(',')
                         try:
@@ -601,39 +614,39 @@ try:
                            config.write(config_file)
                            config_file.close()
                         except:
-                           say('Failed to write config file on %s...' % parts[0])
+                           say('Failed to write config file on %s...' % parts[0], is_console)
                      except IndexError:
                         logmsg('Syntax: !atlogin item1,item2,item3')
                   else:
                      say('You\'re no admin, %s!' %nick)
 
                elif parts[0] == '!help':
-                  say('!time - Get current server time')
-                  say('!who  - Show who\'s playing and how long')
-                  say('!votekick <nick> Vote to kick someone')
-                  say('!voteban <nick> Vote to ban someone')
-                  say('!uptime - Show server uptime')
-                  say('!motd - display the MOTD')
+                  say('!time - Get current server time', is_console)
+                  say('!who  - Show who\'s playing and how long', is_console)
+                  say('!votekick <nick> Vote to kick someone', is_console)
+                  say('!voteban <nick> Vote to ban someone', is_console)
+                  say('!uptime - Show server uptime', is_console)
+                  say('!motd - display the MOTD', is_console)
 
-                  if admin.match(nick) or nick.lower() in temp_admins:
-                     say('!give <nick> <amount> <Item ID | Name> - Give someone an item')
-                     say('!kick <nick> - Kick someone')
-                     say('!ban <nick> - Ban someone')
-                     say('!unban <nick> - Unban someone')
-                     say('!white <nick> - Add someone to the whitelist')
-                     say('!unwhite <nick> - Remove someone from the whitelist')
+                  if is_console or admin.match(nick) or nick.lower() in temp_admins:
+                     say('!give <nick> <amount> <Item ID | Name> - Give someone an item', is_console)
+                     say('!kick <nick> - Kick someone', is_console)
+                     say('!ban <nick> - Ban someone', is_console)
+                     say('!unban <nick> - Unban someone', is_console)
+                     say('!white <nick> - Add someone to the whitelist', is_console)
+                     say('!unwhite <nick> - Remove someone from the whitelist', is_console)
 
-                     if admin.match(nick):
-                        say('!lite <nick> - Make someone a lite admin')
-                        say('!unlite <nick> - Remove lite admin status')
-                        say('!motd <message> - set the MOTD')
-                        say('!atlogin <item>[,item[,item]] - give players items at login')
-                        say('!stop - Stop the server')
+                     if is_console or admin.match(nick):
+                        say('!lite <nick> - Make someone a lite admin', is_console)
+                        say('!unlite <nick> - Remove lite admin status', is_console)
+                        say('!motd <message> - set the MOTD', is_console)
+                        say('!atlogin <item>[,item[,item]] - give players items at login', is_console)
+                        say('!stop - Stop the server', is_console)
    
                elif parts[0] == '!uptime':
                   uptime = int(time()) - started
    
-                  say('The server has been up for %s\n' % (datetime.timedelta(seconds = uptime)))
+                  say('The server has been up for %s' % (datetime.timedelta(seconds = uptime)), is_console)
 
             else: #NO chat
                # Server responded with the userlist, parse and spread the news
@@ -641,9 +654,9 @@ try:
                if who_resp:
                   players_on = who_resp.group(1).split(", ")
                   try:
-                     say('Currently online [%s/%s]:' % (len(players_on),min(int(MAXPLAYER),20)))
+                     say('Currently online [%s/%s]:' % (len(players_on),min(int(MAXPLAYER),20)), is_console)
                   except ValueError:
-                     say('Currently online [?/?]:')
+                     say('Currently online [?/?]:', is_console)
    
                   for i in players_on:
                      try:
@@ -651,11 +664,11 @@ try:
                         connected = datetime.timedelta(seconds = contime)
    
                         if admin.match(i):
-                           say(' - %s (Admin) [%s]\n' % (i, connected))
+                           say(' - %s (Admin) [%s]\n' % (i, connected), is_console)
                         elif i.lower() in temp_admins:
-                           say(' - %s (Lite Admin) [%s]' % (i, connected))
+                           say(' - %s (Lite Admin) [%s]' % (i, connected), is_console)
                         else:
-                           say(' - %s [%s]' % (i, connected))
+                           say(' - %s [%s]' % (i, connected), is_console)
    
                      except KeyError:
                         logmsg('Unlisted user: %s' % (i))

@@ -648,6 +648,9 @@ try:
    
                   say('The server has been up for %s' % (datetime.timedelta(seconds = uptime)), is_console)
 
+               elif parts[0] == '!!' and is_console:
+                  stdin.write("%s\n" % string.join(parts[1:], " "))
+
             else: #NO chat
                # Server responded with the userlist, parse and spread the news
                who_resp = srv_list_response.search(line)

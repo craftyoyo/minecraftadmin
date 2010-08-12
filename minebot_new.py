@@ -558,7 +558,7 @@ try:
                ply_deop = srv_deopped.search(line)
                if ply_deop:
                   nick = ply_deop.group(1).lower()
-                  players[nick]['op'] = True
+                  players[nick]['op'] = False
                   
                   debug()
  

@@ -223,6 +223,13 @@ def chat(nick, text):
       t = strftime('%H:%M:%S (%Z)')
       say('The current server time is: %s' % t)
    
+   elif cmd == '!help':
+      say('The following commands are available:')
+      say('  !uptime   - Display server uptime')
+      say('  !time     - Display server time')
+      say('  !votekick - Start a votekick')
+      say('  !voteban  - Start a voteban')
+
    elif cmd == '!who':
       stdin.write('list\n')
    
@@ -232,8 +239,12 @@ def chat(nick, text):
       try:
          target = parts[1].lower()
   
-         if players[target]['op']:
-            say('You can\'t votekick admins!')
+         try:
+            if players[target]['op']:
+               say('You can\'t votekick admins!')
+               return
+         except KeyError:
+            say('There is no such player')
             return
   
          try:
@@ -263,9 +274,13 @@ def chat(nick, text):
 
       try:
          target = parts[1].lower()
-
-         if player[target]['op']:
-            say('You can\'t voteban ops!')
+         
+         try:
+            if players[target]['op']:
+               say('You can\'t voteban ops!')
+               return
+         except KeyError:
+            say('There is no such player')
             return
 
          try:
@@ -348,6 +363,23 @@ def command(nick, text):
                say('User not on whitelist')
          except Exception as e:
             print e
+
+      elif cmd == 'giveall':
+         try:
+            items = string.join(parts[2:],'').replace(' ','').split(',')
+            amount = parts[1]
+            
+            for item in items:
+               try:
+                  for target in players:
+                     give(target, item, amount)
+               except Mineception as me:
+                  say(me.errmsg)
+         except IndexError:
+            pass
+             
+
+
 
       elif cmd == 'atlogin':
          try:

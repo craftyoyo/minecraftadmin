@@ -423,6 +423,21 @@ def console(line):
 def debug():
    print players
 
+def saveadmins():
+   a = []
+
+   for p in players:
+      if players[p]['op']:
+         a.append(p)
+
+   try:
+      config.set('general', 'admins', string.join(a, ' '))
+      config_file = open('minebot.ini', 'w')
+      config.write(config_file)
+      config_file.close()
+   except:
+      logmsg('Failed to save admins to configuration file')
+
 try:
    current_players = 0
    started         = int(time())
@@ -469,6 +484,13 @@ try:
                if pl_chat:
                   nick = pl_chat.group(1)
                   text = pl_chat.group(2)
+                  
+                  if not players[nick.lower()]['allowed'] and PASSWORD != None:
+                     if text == PASSWORD:
+                        say('Access granted!')
+                        players[nick.lower()]['allowed'] = True
+                     else:
+                        say('Access denied!')
  
                   chat(nick, text)
 
@@ -581,7 +603,8 @@ try:
                if ply_op:
                   nick = ply_op.group(1).lower()
                   players[nick]['op'] = True
- 
+               
+                  saveadmins() 
                   debug()
 
                   continue
@@ -592,6 +615,7 @@ try:
                   nick = ply_deop.group(1).lower()
                   players[nick]['op'] = False
                   
+                  saveadmins()
                   debug()
  
                   continue

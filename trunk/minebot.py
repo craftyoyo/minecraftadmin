@@ -705,7 +705,7 @@ try:
                      for item in atlogin:
                         try:
                            give(last_joined,item,1)
-                        except Mineception as me:
+                        except Mineception, me:
                            say(me.errmsg)
                            
                      if PASSWORD != None \

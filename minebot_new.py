@@ -92,6 +92,7 @@ except:
 ## load custom config ##
 logmsg('Checking custom config...')
 
+
 if os.path.isfile('minebot.ini'):
    logmsg('Custom config found, loading...')
    try:
@@ -108,8 +109,9 @@ else:
    except:
       logmsg('Failed to write new config file, continuing...')
 
+
 logmsg('Setting config...')
-try: #TODO: Decide between THIS_SPELLING and this_spelling :P
+try:
    SERVER             = config.get('general', 'server')
    ADMINS             = config.get('general', 'admins').split(' ')
    if ADMINS[0] == '':
@@ -133,10 +135,10 @@ try: #TODO: Decide between THIS_SPELLING and this_spelling :P
       PASSWORD = None
 
    PASSTIME           = config.getint('general', 'password_timeout')
-   motd               = config.get('general', 'motd').split('|')
-   atlogin            = config.get('general', 'atlogin').split(' ')
-   if atlogin[0] == '':
-      del(atlogin[0])
+   MOTD               = config.get('general', 'motd').split('|')
+   ATLOGIN            = config.get('general', 'atlogin').split(' ')
+   if ATLOGIN[0] == '':
+      del(ATLOGIN[0])
 except:
    logmsg('Failed setting configuration, exiting...')
    exit()
@@ -383,11 +385,11 @@ def command(nick, text):
 
       elif cmd == 'atlogin':
          try:
-            global atlogin
-            atlogin = string.join(parts[1:],'').replace(' ','').split(',')
+            global ATLOGIN
+            ATLOGIN = string.join(parts[1:],'').replace(' ','').split(',')
             
             try:
-               config.set('general','atlogin',string.join(atlogin,' '))
+               config.set('general','atlogin',string.join(ATLOGIN,' '))
                config_file = open('minebot.ini', 'w')
                config.write(config_file)
                config_file.close()
@@ -398,11 +400,11 @@ def command(nick, text):
 
       elif cmd == 'motd':
          try:
-            global motd
-            motd = string.join(parts[1:], " ").split("|")
+            global MOTD
+            MOTD = string.join(parts[1:], " ").split("|")
 
             try:
-               config.set('general', 'motd', string.join(motd, '|'))
+               config.set('general', 'motd', string.join(MOTD, '|'))
                config_file = open('minebot.ini', 'w')
                config.write(config_file)
                config_file.close()
@@ -483,12 +485,15 @@ try:
                break
             
             if s == sys.stdin:
+               # Console command, just process that
                is_console = True
                console(line)
             else:
+               # Not a console command, decide what kind it is and take action
                is_console = False
                logsrv(line)
 
+               # Chat
                pl_chat = chatmessage.match(line)
                if pl_chat:
                   nick = pl_chat.group(1)
@@ -505,6 +510,7 @@ try:
 
                   continue
                
+               # Command executed
                pl_cmd = srv_cmd.match(line)
                if pl_cmd:
                   nick = pl_cmd.group(1)
@@ -556,8 +562,10 @@ try:
                   nick = ply_join.group(1)
                   last_joined = nick.lower()
  
-                  # Save connecion time
-                  players[last_joined] = dict({"connected": int(time())})
+                  # Save connecion time and initialize player dictionary
+                  players[last_joined] = dict(
+                           { 'connected': int(time()) }
+                        )
  
                   # White list?
                   if last_joined in WHITELIST or last_joined in ADMINS:
@@ -573,10 +581,10 @@ try:
                   else:
                      players[last_joined]['op'] = False
    
-                  for line in motd:
+                  for line in MOTD:
                      say('%s' % line.replace('$nick', nick))
   
-                  for item in atlogin:
+                  for item in ATLOGIN:
                      try:
                         give(last_joined, item)
                      except Mineception as me:

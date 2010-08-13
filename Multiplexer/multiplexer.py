@@ -38,10 +38,13 @@ class Mineremote:
          self.mainloop()
       except Exception, e:
          self.log_exception("__init__() -> mainloop()", e)
+      except socket.error, se:
+         self.log_exception("__init__()", se)
       except KeyboardInterrupt:
          self.log('Ctrl-C? Really! Maaaaaan...')
          self.server_stdin.write('stop\n')
 
+      self.do_exit()
       self.log('Exit!')
 
    def log(self, msg):
@@ -163,7 +166,6 @@ class Mineremote:
                elif s == self.server.stderr or s == self.server.stdout:
                   line = s.readline().rstrip()
                   if line == '':
-                     self.do_exit()
                      return True
   
                   self.log_server(line)
@@ -177,6 +179,12 @@ class Mineremote:
                            self.clear_peer(i)
 
    def do_exit(self):
+      for i in self.clients:
+         try:
+            i.close()
+         except:
+            pass
+
       self.server_socket.close()
          
    def send_peer(self, peer, what):

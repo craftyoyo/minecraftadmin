@@ -69,8 +69,12 @@ class Mineremote:
 
    def clear_peer(self, peer):
       try:
-         self.clients.pop(peer)
-         self.outputs.remove(peer)
+         if peer in self.clients:
+            self.clients.pop(peer)
+
+         if peer in self.outputs:
+            self.outputs.remove(peer)
+
          peer.close()
 
          self.log('Connection count: %d' % len(self.clients))

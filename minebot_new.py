@@ -413,6 +413,15 @@ def command(nick, text):
          except Exception as e:
             print e
 
+      elif cmd == 'tp':
+         try:
+            payloads = string.join(parts[1:-1],' ').replace(',',' ').split(' ')
+            target = parts[len(parts)-1]
+         except IndexError:
+            pass
+         else:
+            for payload in payloads:
+               stdin.write('tp %s %s\n' % (payload, target))
    else:
       say('Commands can only be executed by an OP.')
 

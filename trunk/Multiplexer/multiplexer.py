@@ -44,6 +44,7 @@ class Mineremote:
       except KeyboardInterrupt:
          self.log('Ctrl-C? Really! Maaaaaan...')
          self.server_stdin.write('stop\n')
+         self.server.wait()
 
       self.do_exit()
       self.log('Exit!')

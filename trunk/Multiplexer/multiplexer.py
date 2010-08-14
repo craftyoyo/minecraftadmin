@@ -14,7 +14,8 @@ default_config = """
 [remote]
 port = 9001
 password = bobblefish
-listenaddr = 127.0.0.1
+socktype = unix
+listenaddr = listen_me
 
 [java]
 server   = ./minecraft_server.jar
@@ -61,10 +62,26 @@ class Mineremote:
       self.log('-----------------------')
 
    def start_listening(self):
-      self.log('Starting to listen on port %d...' % self.port)
-      self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      if self.socktype == 'tcp6':
+         self.socket_family = socket.AF_INET6
+         self.log(' > Socket family: AF_INET6')
+      elif self.socktype == 'unix':
+         self.socket_family = socket.AF_UNIX
+         self.log(' > Socket family: AF_UNIX')
+      else:
+         self.socket_family = socket.AF_INET
+         self.log(' > Socket family: AF_INET')
+
+      if self.socket_family != socket.AF_UNIX:
+         self.log(' > Port: %s' % self.port)
+
+      self.server_socket = socket.socket(self.socket_family, socket.SOCK_STREAM)
       self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-      self.server_socket.bind((self.listenaddr, self.port))
+
+      if self.socket_family == socket.AF_UNIX:
+         self.server_socket.bind(self.listenaddr)
+      else:
+         self.server_socket.bind((self.listenaddr, self.port))
       self.server_socket.listen(10)
 
    def clear_peer(self, peer):
@@ -99,8 +116,12 @@ class Mineremote:
             for i in self.clients:
                if (time.time() - self.clients[i]['connected']) > 15 \
                      and not self.clients[i]['auth']:
-                  self.log('Killed %s:%s: No password within 15 seconds' 
-                        % socket.getnameinfo(i.getpeername(), 0))
+                  if self.socket_family != socket.AF_UNIX:
+                     self.log('Killed %s:%s: No password within 15 seconds' 
+                           % socket.getnameinfo(i.getpeername(), 0))
+                  else:
+                     self.log('Killed local socket: No password within 15 seconds')
+
                   self.clear_peer(i)
                   break
          else:
@@ -115,8 +136,10 @@ class Mineremote:
 
                   if self.password:
                      auth = False
+                     self.send_peer(client, '- Please enter the password')
                   else:
                      auth = True
+                     self.send_peer(client, '+ No password, welcome!')
 
                   self.clients[client] = dict(
                            {
@@ -125,11 +148,14 @@ class Mineremote:
                               'connected': int(time.time())
                            }
                         )
-   
-                  self.log('Got a new connection from %s:%s' 
-                        % socket.getnameinfo(address, 0))
+                  if self.socket_family != socket.AF_UNIX:
+                     self.log('Got a new connection from %s:%s' 
+                           % socket.getnameinfo(address, 0))
+                  else:
+                     self.log('Got a new local connection')
+
                   self.log('Connection count: %d' % len(self.clients))
-   
+  
                elif s in self.clients:
                   # Data from a client
                   try:
@@ -137,15 +163,23 @@ class Mineremote:
    
                      if buf == '':
                         # buffer is empty, client died!
-                        self.log('Lost connection from %s:%s'
-                              % socket.getnameinfo(s.getpeername(), 0))
+                        if (self.socket_family != socket.AF_UNIX):
+                           self.log('Lost connection from %s:%s'
+                                 % socket.getnameinfo(s.getpeername(), 0))
+                        else:
+                           self.log('Lost local connection')
       
                         self.clear_peer(s)
                      else:
                         if not self.clients[s]['auth']:
                            if buf.rstrip() != self.password:
                               self.send_peer(s, '- Bad password, sorry >:O')   
-                              self.log('Killed %s:%s: Bad password' % socket.getnameinfo(s.getpeername(), 0))
+
+                              if self.socket_family != socket.AF_UNIX:
+                                 self.log('Killed %s:%s: Bad password' % socket.getnameinfo(s.getpeername(), 0))
+                              else:
+                                 self.log('Killed local socket: Bad password')
+
                               self.clear_peer(s)
                            else:
                               self.clients[s]['auth'] = True
@@ -154,11 +188,19 @@ class Mineremote:
                               continue
       
                         # Valid data!
-                        (host, port) = socket.getnameinfo(s.getpeername(), 0)
-                        self.log('<%s:%s> %s' % (host, port, buf.rstrip()))
+                        if self.socket_family != socket.AF_UNIX:
+                           (host, port) = socket.getnameinfo(s.getpeername(), 0)
+                           self.log('<%s:%s> %s' % (host, port, buf.rstrip()))
+                        else:
+                           self.log('<local_socket> %s' % buf.rstrip())
       
                         if buf.rstrip() == '.close':
-                           self.log('Client %s:%s left me' % (host, port))
+                           if self.socket_family != socket.AF_UNIX:
+                              self.log('Client %s:%s has disconnected' 
+                                    % (host, port))
+                           else:
+                              self.log('Local client has disconnected')
+
                            self.send_peer(s, '+ Bye')
                            self.clear_peer(s)
                         else:
@@ -177,8 +219,11 @@ class Mineremote:
                   for i in self.clients:
                      if self.clients[i]['auth']:
                         if self.send_peer(i, line) == 0:
-                           self.log('%s:%s appears dead, removing'
-                                 % socket.getnameinfo(i.getpeername(), 0))
+                           if self.socket_type != socket.AF_UNIX:
+                              self.log('%s:%s appears dead, removing'
+                                    % socket.getnameinfo(i.getpeername(), 0))
+                           else:
+                              self.log('A local socket appears dead, removing')
    
                            self.clear_peer(i)
 
@@ -190,6 +235,9 @@ class Mineremote:
             pass
 
       self.server_socket.close()
+
+      if self.socket_family == socket.AF_UNIX:
+         os.remove(self.listenaddr)
          
    def send_peer(self, peer, what):
       try:
@@ -262,6 +310,7 @@ class Mineremote:
          if self.password == '':
             self.password = None
 
+         self.socktype   = config.get('remote', 'socktype')
          self.listenaddr = config.get('remote', 'listenaddr')
 
          self.server_jar = config.get('java', 'server')

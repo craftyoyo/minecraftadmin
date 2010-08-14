@@ -4,8 +4,7 @@ import sys
 import socket
 import select
 
-SERVER = 'boerger.mine.nu'
-PORT   = 9001
+SERVER = '/home/lukas/listen_me'
 PASS   = 'bobblefish'
 
 def waitfor(sock):
@@ -13,8 +12,8 @@ def waitfor(sock):
    if buf[0] == '+' or buf == '':
       return
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((SERVER, PORT))
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.connect(SERVER)
 
 s.send('%s\r\n' % PASS)
 

@@ -23,27 +23,6 @@ class MinecraftRemote:
    def __del__(self):
       self.client_socket.close()
 
-#  def color(self, color):
-#     if color == 'red':
-#       return '§4'
-#     elif color == 'light red':
-#        return '§c'
-#     elif color == 'yellow':
-#        return '§e'
-#     elif color == 'dark yellow':
-#        return '§6'
-#     elif color == 'green':
-#        return '§2'
-#     elif color == 'light green':
-#        return '§a'
-#     elif color == 'cyan':
-#        return '§b'
-#     elif color == 'light blue':
-#        return '§3'
-#     elif color == 'dark blue'
-#        return '§1'
-# ... Can't describe the other blue now: http://wom.thatgamer.com/colorguide.php
-
    def connect(self):
       self.initialize_socket()
       
@@ -175,8 +154,6 @@ class MinecraftRemote:
          
          if self.client_socket in outset:
             line = self.receive()
-            print line
-            
             self.decide_event(line)
 
    def stop(self):

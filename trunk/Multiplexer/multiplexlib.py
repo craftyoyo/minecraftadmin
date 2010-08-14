@@ -160,6 +160,12 @@ class MinecraftRemote:
       self.stop = True
 
    def disconnect(self):
+      self.send_command('.close')
+      while True:
+         line = self.receive()
+         if line[0] == '+':
+            break
+
       self.client_socket.close()
 
    def send_command(self, cmd):
@@ -238,3 +244,6 @@ class MinecraftRemote:
 
    def unban(self, target):
       self.send_command('pardon %s' % target)
+
+   def give(self, player, itemid, amount):
+      self.send_command('give %s %s %s' % (player, itemid, amount))

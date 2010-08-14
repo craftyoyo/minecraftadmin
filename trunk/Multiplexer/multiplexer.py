@@ -182,11 +182,12 @@ class Mineremote:
                                  self.log('Killed local socket: Bad password')
 
                               self.clear_peer(s)
+
                            else:
                               self.clients[s]['auth'] = True
                               self.send_peer(s, '+ Access granted, welcome')
          
-                              continue
+                           continue
       
                         # Valid data!
                         if self.socket_family != socket.AF_UNIX:

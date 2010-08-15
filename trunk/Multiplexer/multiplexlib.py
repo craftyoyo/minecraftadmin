@@ -188,7 +188,8 @@ class MinecraftRemote:
            self.socket_family != socket.AF_UNIX:
                raise MinecraftRemoteException('Unsupported socket family')
 
-        self.client_socket = socket.socket(self.socket_family, socket.SOCK_STREAM)
+        self.client_socket = socket.socket(self.socket_family,
+                                           socket.SOCK_STREAM)
         self.client_fd = self.client_socket.makefile()
 
     def on_raw(self, raw):

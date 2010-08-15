@@ -118,12 +118,7 @@ class Mineremote:
                 for i in self.clients:
                     if (time.time() - self.clients[i]['connected']) > 15 and \
                        not self.clients[i]['auth']:
-                           if self.socket_family != socket.AF_UNIX:
-                               self.log('Killed %s:%s: No password within 15 seconds' 
-                                   % socket.getnameinfo(i.getpeername(), 0))
-                           else:
-                               self.log('Killed local socket: No password within 15 seconds')
-
+                           self.client_log(i, 'No password within 15 seconds')
                            self.clear_peer(i)
                            break
             else:
@@ -149,12 +144,7 @@ class Mineremote:
                               'connected': int(time.time())
                         }
                         
-                        if self.socket_family != socket.AF_UNIX:
-                            self.log('Got a new connection from %s:%s' 
-                                % socket.getnameinfo(address, 0))
-                        else:
-                            self.log('Got a new local connection')
-
+                        self.client_log(client, 'Connected')
                         self.log('Connection count: %d' % len(self.clients))
   
                     elif s in self.clients:
@@ -164,49 +154,34 @@ class Mineremote:
    
                             if buf == '':
                                 # buffer is empty, client died!
-                                if (self.socket_family != socket.AF_UNIX):
-                                    self.log('Lost connection from %s:%s'
-                                        % socket.getnameinfo(s.getpeername(), 0))
-                                else:
-                                    self.log('Lost local connection')
-      
+                                self.client_log(s, 'Client died')
                                 self.clear_peer(s)
                             else:
                                 if not self.clients[s]['auth']:
                                     if buf.rstrip() != self.password:
-                                        self.send_peer(s, '- Bad password, sorry >:O')   
-
-                                        if self.socket_family != socket.AF_UNIX:
-                                            self.log('Killed %s:%s: Bad password' % socket.getnameinfo(s.getpeername(), 0))
-                                        else:
-                                            self.log('Killed local socket: Bad password')
-
+                                        self.send_peer(s,
+                                            '- Bad password, sorry >:O')
+                                        self.client_log(s, 'Bad password')
                                         self.clear_peer(s)
 
                                     else:
                                         self.clients[s]['auth'] = True
-                                        self.send_peer(s, '+ Access granted, welcome')
+                                        self.send_peer(s,
+                                            '+ Access granted, welcome')
          
                                     continue
       
                                 # Valid data!
-                                if self.socket_family != socket.AF_UNIX:
-                                    (host, port) = socket.getnameinfo(s.getpeername(), 0)
-                                    self.log('<%s:%s> %s' % (host, port, buf.rstrip()))
-                                else:
-                                    self.log('<local_socket> %s' % buf.rstrip())
+                                self.client_log(s, 'Data: %s' % buf.rstrip())
       
                                 if buf.rstrip() == '.close':
-                                    if self.socket_family != socket.AF_UNIX:
-                                        self.log('Client %s:%s has disconnected'
-                                            % (host, port))
-                                    else:
-                                        self.log('Local client has disconnected')
-
+                                    self.client_log(s, 'Disconnected')
                                     self.send_peer(s, '+ Bye')
                                     self.clear_peer(s)
                                 else:
-                                    self.server_stdin.write('%s\n' % buf.rstrip())
+                                    self.server_stdin.write('%s\n'
+                                        % buf.rstrip())
+
                         except Exception, e:
                             self.clear_peer(s)
                             self.log_exception('mainloop() > clientdata', e)
@@ -221,12 +196,7 @@ class Mineremote:
                         for i in self.clients:
                             if self.clients[i]['auth']:
                                 if self.send_peer(i, line) == 0:
-                                    if self.socket_type != socket.AF_UNIX:
-                                        self.log('%s:%s appears dead, removing'
-                                            % socket.getnameinfo(i.getpeername(), 0))
-                                    else:
-                                        self.log('A local socket appears dead, removing')
-   
+                                    self.client_log(i, 'Looks dead, removing')
                                     self.clear_peer(i)
 
     def do_exit(self):
@@ -241,6 +211,13 @@ class Mineremote:
         if self.socket_family == socket.AF_UNIX:
             os.remove(self.listenaddr)
          
+    def client_log(self, client, line):
+        if self.socket_family != socket.AF_UNIX:
+            (host, port) = socket.getnameinfo(client.getpeername(), 0)
+            self.log('[%s:%s] %s' % (host, port, line))
+        else:
+            self.log('[local #%d] %s' % (client.fileno(), line))
+
     def send_peer(self, peer, what):
         try:
             return peer.send('%s\r\n' % what)

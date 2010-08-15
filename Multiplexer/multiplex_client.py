@@ -11,39 +11,39 @@ ml = multiplexlib.MinecraftRemote(socket.AF_INET, "127.0.0.1", 9001, 'bobblefish
 ml.connect()
 
 if len(sys.argv) > 1:
-      ml.send_command('%s' % string.join(sys.argv[1:], " "))
-      (sout, _, _) = select.select([ml.client_socket], [], [], 1)
+    ml.send_command('%s' % string.join(sys.argv[1:], " "))
+    (sout, _, _) = select.select([ml.client_socket], [], [], 1)
 
-      if sout == []:
-         exit()
-      else:
-         print ml.receive()
-         ml.disconnect()
+    if sout == []:
+        exit()
+    else:
+        print ml.receive()
+        ml.disconnect()
 else:
-   try:
-      while True:
-         (sout, sin, sexc) = select.select([sys.stdin, ml.client_socket], [], [])
+    try:
+        while True:
+            (sout, sin, sexc) = select.select([sys.stdin, ml.client_socket], [], [])
    
-         if sout != []:
-            for i in sout:
-               if i == sys.stdin:
-                  line = sys.stdin.readline()
+            if sout != []:
+                for i in sout:
+                    if i == sys.stdin:
+                        line = sys.stdin.readline()
    
-                  if line == '':
-                     ml.disconnect()
-                     exit()
-                  else:
-                     ml.send_command(line.rstrip())
-               else:
-                  line = ml.receive()
+                        if line == '':
+                            ml.disconnect()
+                            exit()
+                        else:
+                            ml.send_command(line.rstrip())
+                    else:
+                        line = ml.receive()
    
-                  if line == '':
-                     ml.disconnect()
-                     exit()
-                  else:
-                     print line
-   except KeyboardInterrupt:
-      print 'Exiting.'
-   except Exception, e:
-      print 'Got exception: ' + e.__str__()
+                        if line == '':
+                            ml.disconnect()
+                            exit()
+                        else:
+                            print line
+    except KeyboardInterrupt:
+        print 'Exiting.'
+    except Exception, e:
+        print 'Got exception: ' + e.__str__()
 

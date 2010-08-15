@@ -7,7 +7,10 @@ import sys
 import string
 import select
 
-ml = multiplexlib.MinecraftRemote(socket.AF_INET, "127.0.0.1", 9001, 'bobblefish')
+ml = multiplexlib.MinecraftRemote(socket.AF_UNIX,
+                                  '/home/lukas/listen_me',
+                                  9001,
+                                  'bobblefish')
 ml.connect()
 
 if len(sys.argv) > 1:
@@ -22,7 +25,9 @@ if len(sys.argv) > 1:
 else:
     try:
         while True:
-            (sout, sin, sexc) = select.select([sys.stdin, ml.client_socket], [], [])
+            (sout, sin, sexc) = select.select([sys.stdin, ml.client_socket],
+                                              [],
+                                              [])
    
             if sout != []:
                 for i in sout:

@@ -1,52 +1,49 @@
 #!/usr/bin/python
 
-import sys
 import socket
+import multiplexlib
+import time
+import sys
+import string
 import select
 
-SERVER = '/home/lukas/listen_me'
-PASS   = 'bobblefish'
-
-def waitfor(sock):
-   buf = s.recv(128)
-   if buf[0] == '+' or buf == '':
-      return
-
-s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-s.connect(SERVER)
-
-s.send('%s\r\n' % PASS)
-
-waitfor(s)
+ml = multiplexlib.MinecraftRemote(socket.AF_INET, "127.0.0.1", 9001, 'bobblefish')
+ml.connect()
 
 if len(sys.argv) > 1:
-   s.send('%s\r\n' % sys.argv[1])
-   print s.recv(256).rstrip()
-   s.send('.close\r\n')
-   waitfor(s)
+      ml.send_command('%s' % string.join(sys.argv[1:], " "))
+      (sout, _, _) = select.select([ml.client_socket], [], [], 1)
+
+      if sout == []:
+         exit()
+      else:
+         print ml.receive()
+         ml.disconnect()
 else:
-   while True:
-      (sout, sin, sexc) = select.select([sys.stdin, s], [], [])
+   try:
+      while True:
+         (sout, sin, sexc) = select.select([sys.stdin, ml.client_socket], [], [])
    
-      if sout != []:
-         for i in sout:
-            if i == sys.stdin:
-               line = sys.stdin.readline()
-
-               if line == '':
-                  s.send('.close\r\n')
-                  waitfor(s)
-
-                  s.close()
-                  exit()
+         if sout != []:
+            for i in sout:
+               if i == sys.stdin:
+                  line = sys.stdin.readline()
+   
+                  if line == '':
+                     ml.disconnect()
+                     exit()
+                  else:
+                     ml.send_command(line.rstrip())
                else:
-                  s.send(line)
-            else:
-               line = i.recv(512)
-
-               if line == '':
-                  s.close()
-                  exit()
-               else:
-                  print line.rstrip()
+                  line = ml.receive()
+   
+                  if line == '':
+                     ml.disconnect()
+                     exit()
+                  else:
+                     print line
+   except KeyboardInterrupt:
+      print 'Exiting.'
+   except Exception, e:
+      print 'Got exception: ' + e.__str__()
 

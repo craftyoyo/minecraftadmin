@@ -13,6 +13,7 @@ class MinecraftRemote:
     def __init__(self, sockfam, address, port = None, password = None):
         self.socket_family = sockfam
         self.sockaddr      = address
+        self.connected     = False
         self.port          = port
         self.password      = password
         self.stop          = False
@@ -27,11 +28,14 @@ class MinecraftRemote:
     def connect(self):
         self.initialize_socket()
 
-        if (self.socket_family == socket.AF_UNIX):
-            self.client_socket.connect(self.sockaddr)
-        else:
-            self.client_socket.connect((self.sockaddr, self.port))
- 
+        try:
+            if (self.socket_family == socket.AF_UNIX):
+                self.client_socket.connect(self.sockaddr)
+            else:
+                self.client_socket.connect((self.sockaddr, self.port))
+        except socket.error, se:
+            raise MinecraftRemoteException(se)
+
         password_line = self.receive() # I love powers of 2.
         if password_line[0] == '-':
             self.send_command(self.password)
@@ -40,6 +44,8 @@ class MinecraftRemote:
             if reply[0] == '-':
                 raise MinecraftRemoteException('Bad password')
  
+        self.connected = True
+
     def decide_event(self, line):
         ts_msg = re.compile(
                r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[([A-Z]+)\] (.+)$'
@@ -140,7 +146,7 @@ class MinecraftRemote:
         self.on_unknown(line)
 
     def run(self):
-        while not self.stop:
+        while not self.stop and self.connected:
             try:
                 (outset, inset, errset) = select.select([self.client_socket], 
                        [], 
@@ -161,6 +167,7 @@ class MinecraftRemote:
         self.stop = True
 
     def disconnect(self):
+        self.connected = False
         self.send_command('.close')
 
         while True:
@@ -171,7 +178,8 @@ class MinecraftRemote:
         self.client_socket.close()
 
     def send_command(self, cmd):
-        self.client_socket.send('%s\r\n' % cmd)
+        cmd = cmd.encode('utf-8')
+        self.client_socket.send(cmd + '\r\n')
 
     def receive(self):
         # TODO: I have a feeling that this is a really inefficient way! Keep it.
@@ -180,7 +188,7 @@ class MinecraftRemote:
         if buf == '':
             raise MinecraftRemoteException('Read error on socket')
 
-        return buf.rstrip()
+        return buf.decode('utf-8').rstrip()
 
     def initialize_socket(self):
         if self.socket_family != socket.AF_INET and \
@@ -251,3 +259,6 @@ class MinecraftRemote:
 
     def give(self, player, itemid, amount):
         self.send_command('give %s %s %s' % (player, itemid, amount))
+
+    def tell(self, target, line):
+        self.send_command('tell %s %s' % (target, line))

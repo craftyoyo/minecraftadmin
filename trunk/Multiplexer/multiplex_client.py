@@ -14,7 +14,7 @@ ml = multiplexlib.MinecraftRemote(socket.AF_UNIX,
 ml.connect()
 
 if len(sys.argv) > 1:
-    ml.send_command('%s' % string.join(sys.argv[1:], " "))
+    ml.send_command('%s' % string.join(sys.argv[1:], " ").decode('utf-8'))
     (sout, _, _) = select.select([ml.client_socket], [], [], 1)
 
     if sout == []:
@@ -38,7 +38,7 @@ else:
                             ml.disconnect()
                             exit()
                         else:
-                            ml.send_command(line.rstrip())
+                            ml.send_command(line.rstrip().decode('utf-8'))
                     else:
                         line = ml.receive()
    

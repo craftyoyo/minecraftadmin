@@ -21,11 +21,13 @@ listenaddr = listen_me
 server   = ./minecraft_server.jar
 heap_max = 1024M
 heap_min = 1024M
+gui = false
 """
 
 class Mineremote:
     def __init__(self):
         self.log('Hello, world!')
+        self.start_time = int(time.time())
 
         if not self.load_config():
             self.log('Failed loading the configuration file, this is fatal.')
@@ -178,6 +180,10 @@ class Mineremote:
                                     self.client_log(s, 'Disconnected')
                                     self.send_peer(s, '+ Bye')
                                     self.clear_peer(s)
+                                elif buf.rstrip() == '.time':
+                                    self.client_log(s, 'Uptime requested')
+                                    self.send_peer(s, '+ uptime %i'
+                                            % self.start_time)
                                 else:
                                     self.server_stdin.write('%s\n'
                                         % buf.rstrip())
@@ -232,7 +238,7 @@ class Mineremote:
                "-Xms%s" % self.java_heapmin,
                "-jar",
                self.server_jar,
-               "nogui"
+               self.java_gui
             ]
 
         self.log(' > %s' % string.join(server_startcmd, " "))
@@ -252,6 +258,7 @@ class Mineremote:
             ]
         self.inputs  = []
         self.server_stdin = self.server.stdin
+        self.start_time = int(time.time())
 
     def load_config(self):
         try:
@@ -295,6 +302,15 @@ class Mineremote:
 
             self.java_heapmax = config.get('java', 'heap_max')
             self.java_heapmin = config.get('java', 'heap_min')
+
+            self.java_gui = config.get('java', 'gui').lower()
+            if self.java_gui == 'true' or \
+               self.java_gui == 'yes' or \
+               self.java_gui == '1':
+                   self.java_gui = ''
+            else:
+                self.java_gui = 'nogui'
+
         except Exception, e:
             self.log_exception('load_config()', e)
             return False

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import socket
 import multiplexlib
@@ -7,8 +7,8 @@ import sys
 import string
 import select
 
-ml = multiplexlib.MinecraftRemote(socket.AF_UNIX,
-                                  '/home/lukas/listen_me',
+ml = multiplexlib.MinecraftRemote(socket.AF_INET,
+                                  '192.168.2.120',
                                   9001,
                                   'bobblefish')
 ml.connect()

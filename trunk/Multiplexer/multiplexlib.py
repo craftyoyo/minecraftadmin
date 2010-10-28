@@ -35,7 +35,7 @@ class MinecraftRemote:
                 self.client_socket.connect((self.sockaddr, self.port))
         except socket.error, se:
             raise MinecraftRemoteException(se)
-
+         
         password_line = self.receive() # I love powers of 2.
         if password_line[0] == '-':
             self.send_command(self.password)
@@ -183,12 +183,12 @@ class MinecraftRemote:
 
     def receive(self):
         # TODO: I have a feeling that this is a really inefficient way! Keep it.
-        buf = self.client_fd.readline()
+        buf = self.client_socket.makefile().readline()
         
         if buf == '':
             raise MinecraftRemoteException('Read error on socket')
 
-        return buf.decode('utf-8').rstrip()
+        return buf.rstrip()
 
     def initialize_socket(self):
         if self.socket_family != socket.AF_INET and \
@@ -259,6 +259,3 @@ class MinecraftRemote:
 
     def give(self, player, itemid, amount):
         self.send_command('give %s %s %s' % (player, itemid, amount))
-
-    def tell(self, target, line):
-        self.send_command('tell %s %s' % (target, line))
